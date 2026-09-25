@@ -163,3 +163,15 @@ iPhoneOS 27.0 SDK（arm64, `-DHAVE_C68K -DTARGET_IOS`）で `clang -fsyntax-only
 - 確認済み: ノート PC 持ち（横の折り目）の半開きで、上に X68000 画面・下にトラックパッド。
 - 既知: 閉じた状態で上下逆さの縦向きにしてもアプリの向きが変わらない（システムがアプリシーンを
   portraitUpsideDown に回さない。キーボード用シーンだけ回る）。Info.plist には追加済み。OS の仕様とみて現状維持。
+
+### 入力まわりの追加（2026-09-25）
+
+- 仮想パッドの JOY/KEY 切替: KEY では方向パッドがカーソルキー、A/B の代わりに Z・X・C・SPACE（下段）と RETURN（右中央）。
+- 縦向きで分割なし（閉・全開）は画面を上寄せ（上・左右 12pt の余白）し、操作系をその下に配置。
+- 内側ディスプレイ縦向き（全開・半開き）では X68000 フルキーボード（`X68KeyboardView`）を自動表示。
+  F1〜F10 / メイン（JIS）/ SHIFT・CTRL・OPT.1・OPT.2（ラッチ）/ XF1〜5 / 編集・カーソルキー。
+  コアに `X68000_Key_DownScancode` / `X68000_Key_UpScancode`（KeyTable を経由しない送出）を追加。
+  シミュレータで入力を確認（ユーザー確認）。
+- SpriteKit のデバッグ表示（FPS・ノード数）を削除。
+- 残り候補: 余白のアートワーク（HIG）、`UIHingeInteraction` の演出、バンドル ID 確定と TestFlight 準備、
+  `ios/phase2-boot` を `master` へ統合。
