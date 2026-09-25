@@ -67,24 +67,23 @@ class X68JoyCard : X68Device
             let location = touch.location(in: scene)
             let t = scene.atPoint(location)
             if let name = t.name {
-                var c = false
                 if ( name == "A" ) {
-                    self.JoySet(device_id, JOY_TRG2, true ); c = true
+                    self.JoySet(device_id, JOY_TRG2, true )
                 }
                 if ( name == "B" ) {
-                    self.JoySet(device_id, JOY_TRG1, true ); c = true
+                    self.JoySet(device_id, JOY_TRG1, true )
                 }
                 if ( name == "U" ) {
-                    self.JoySet(device_id, JOY_UP, true ); c = true
+                    self.JoySet(device_id, JOY_UP, true )
                 }
                 if ( name == "D" ) {
-                    self.JoySet(device_id, JOY_DOWN, true ); c = true
+                    self.JoySet(device_id, JOY_DOWN, true )
                 }
                 if ( name == "L" ) {
-                    self.JoySet(device_id, JOY_LEFT, true ); c = true
+                    self.JoySet(device_id, JOY_LEFT, true )
                 }
                 if ( name == "R" ) {
-                    self.JoySet(device_id, JOY_RIGHT, true ); c = true
+                    self.JoySet(device_id, JOY_RIGHT, true )
                 }
                 
             }

@@ -930,7 +930,7 @@ class GameScene: SKScene {
                 vc.showROMInvalidAlert(error: error)
             }
 #elseif os(iOS)
-            var message = error.localizedDescription ?? "不明なエラーが発生しました。"
+            var message = error.errorDescription ?? "不明なエラーが発生しました。"
             if case .missingFile = error {
                 message += "\n\n「ファイル」アプリの「このiPhone内」→「MPX68K for iOS」→「MPX68K」フォルダに置いてから、アプリを再起動してください。"
             }
@@ -1134,12 +1134,22 @@ class GameScene: SKScene {
             present(on: viewController)
             return
         }
-        var observer: NSObjectProtocol?
-        observer = NotificationCenter.default.addObserver(forName: UIScene.didActivateNotification, object: nil, queue: .main) { _ in
+        // 登録後に observer を書き込むので、ローカル変数ではなく参照型の箱に入れて捕捉する
+        // （var を捕捉して後から書き換えると Sendable クロージャの警告になる）。
+        let token = ObserverToken()
+        token.observer = NotificationCenter.default.addObserver(forName: UIScene.didActivateNotification, object: nil, queue: .main) { _ in
             guard let viewController = activeRootViewController() else { return }
-            if let observer { NotificationCenter.default.removeObserver(observer) }
+            if let observer = token.observer {
+                NotificationCenter.default.removeObserver(observer)
+                token.observer = nil
+            }
             present(on: viewController)
         }
+    }
+
+    /// 通知の登録トークンの入れ物。書き込みも読み出しもメインスレッドのみ（queue: .main）。
+    private final class ObserverToken: @unchecked Sendable {
+        var observer: NSObjectProtocol?
     }
 
     @objc func hovering(_ sender: UIHoverGestureRecognizer) {
