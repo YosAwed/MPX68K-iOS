@@ -3,7 +3,8 @@
 //  MPX68K for iOS
 //
 //  On-screen joystick for X68000 port 1: an 8-way D-pad and the two
-//  trigger buttons (A = trigger A, B = trigger B). Laid out with Auto Layout against
+//  trigger buttons (A = trigger A, B = trigger B), or in key mode the
+//  Z / X / C / SPACE / RETURN keys. Laid out with Auto Layout against
 //  the safe area so it can sit in the space the 4:3 screen leaves free.
 //
 
@@ -13,6 +14,17 @@ final class VirtualPadView: UIView {
 
     /// Called with the X68000 joystick bits (JOY_UP ... JOY_TRG1) whenever they change.
     var onChange: ((UInt8) -> Void)?
+    /// Called for the key buttons shown in key mode (KeyTable code, pressed).
+    var onKey: ((UInt32, Bool) -> Void)?
+
+    /// Key mode: A/B are replaced by Z, X, C, SPACE along the bottom and RETURN on the right.
+    var usesKeys = false {
+        didSet {
+            guard usesKeys != oldValue else { return }
+            releaseAll()
+            applyMode()
+        }
+    }
 
     private let dpad = DPadControl()
     // X68000 trigger A is bit 5 (JOY_TRG2), trigger B is bit 6 (JOY_TRG1),
@@ -21,25 +33,44 @@ final class VirtualPadView: UIView {
     private let buttonB = PadButton(title: "B", bit: JOY_TRG1)
     private var state: UInt8 = 0
 
+    // KeyTable codes (px68k/x11/keyboard.c)
+    private let keyZ = KeyButton(title: "Z", code: 0x7a)
+    private let keyX = KeyButton(title: "X", code: 0x78)
+    private let keyC = KeyButton(title: "C", code: 0x63)
+    private let keySpace = KeyButton(title: "SPACE", code: 0x20)
+    private let keyReturn = KeyButton(title: "RETURN", code: 0x0d)
+    private let keyRow = UIStackView()
+    private var keyButtons: [KeyButton] { [keyZ, keyX, keyC, keySpace, keyReturn] }
+
+    private var joyConstraints: [NSLayoutConstraint] = []
+    private var keyConstraints: [NSLayoutConstraint] = []
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         isMultipleTouchEnabled = true
         backgroundColor = .clear
 
-        [dpad, buttonA, buttonB].forEach {
+        keyRow.axis = .horizontal
+        keyRow.spacing = 8
+        keyRow.alignment = .fill
+        [keyZ, keyX, keyC, keySpace].forEach { keyRow.addArrangedSubview($0) }
+
+        [dpad, buttonA, buttonB, keyRow, keyReturn].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             addSubview($0)
         }
         dpad.onChange = { [weak self] _ in self?.update() }
         buttonA.onChange = { [weak self] in self?.update() }
         buttonB.onChange = { [weak self] in self?.update() }
+        keyButtons.forEach { button in
+            button.onChange = { [weak self] code, pressed in self?.onKey?(code, pressed) }
+        }
 
         let guide = safeAreaLayoutGuide
         NSLayoutConstraint.activate([
             dpad.widthAnchor.constraint(equalToConstant: 150),
             dpad.heightAnchor.constraint(equalTo: dpad.widthAnchor),
             dpad.leadingAnchor.constraint(equalTo: guide.leadingAnchor, constant: 24),
-            dpad.bottomAnchor.constraint(equalTo: guide.bottomAnchor, constant: -24),
 
             buttonA.widthAnchor.constraint(equalToConstant: 72),
             buttonA.heightAnchor.constraint(equalTo: buttonA.widthAnchor),
@@ -50,11 +81,37 @@ final class VirtualPadView: UIView {
             buttonB.heightAnchor.constraint(equalTo: buttonA.widthAnchor),
             buttonB.trailingAnchor.constraint(equalTo: buttonA.leadingAnchor, constant: -16),
             buttonB.topAnchor.constraint(equalTo: buttonA.centerYAnchor),
+
+            // Key mode: Z X C SPACE along the bottom, RETURN at the right centre.
+            keyRow.leadingAnchor.constraint(equalTo: guide.leadingAnchor, constant: 16),
+            keyRow.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -16),
+            keyRow.bottomAnchor.constraint(equalTo: guide.bottomAnchor, constant: -16),
+            keyRow.heightAnchor.constraint(equalToConstant: 52),
+            keyZ.widthAnchor.constraint(equalToConstant: 56),
+            keyX.widthAnchor.constraint(equalTo: keyZ.widthAnchor),
+            keyC.widthAnchor.constraint(equalTo: keyZ.widthAnchor),
+
+            keyReturn.widthAnchor.constraint(equalToConstant: 96),
+            keyReturn.heightAnchor.constraint(equalToConstant: 64),
+            keyReturn.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -16),
+            keyReturn.centerYAnchor.constraint(equalTo: guide.centerYAnchor),
         ])
+        joyConstraints = [dpad.bottomAnchor.constraint(equalTo: guide.bottomAnchor, constant: -24)]
+        keyConstraints = [dpad.bottomAnchor.constraint(equalTo: keyRow.topAnchor, constant: -16)]
+        applyMode()
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    private func applyMode() {
+        buttonA.isHidden = usesKeys
+        buttonB.isHidden = usesKeys
+        keyRow.isHidden = !usesKeys
+        keyReturn.isHidden = !usesKeys
+        NSLayoutConstraint.deactivate(usesKeys ? joyConstraints : keyConstraints)
+        NSLayoutConstraint.activate(usesKeys ? keyConstraints : joyConstraints)
     }
 
     /// Only the controls take touches; everything else falls through to the screen.
@@ -66,6 +123,7 @@ final class VirtualPadView: UIView {
         dpad.reset()
         buttonA.reset()
         buttonB.reset()
+        keyButtons.forEach { $0.release() }
         update()
     }
 
@@ -250,5 +308,68 @@ private final class PadButton: UIView {
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
         touchesEnded(touches, with: event)
+    }
+}
+
+// MARK: - Key buttons
+
+private final class KeyButton: UIView {
+    var onChange: ((UInt32, Bool) -> Void)?
+    private let code: UInt32
+    private var isPressed = false
+    private let label = UILabel()
+
+    init(title: String, code: UInt32) {
+        self.code = code
+        super.init(frame: .zero)
+        isMultipleTouchEnabled = true
+        layer.cornerRadius = 12
+        layer.borderWidth = 2
+        layer.borderColor = UIColor.white.withAlphaComponent(0.35).cgColor
+        label.text = title
+        label.font = .systemFont(ofSize: title.count > 1 ? 15 : 20, weight: .semibold)
+        label.textColor = UIColor.white.withAlphaComponent(0.7)
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(label)
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+        isAccessibilityElement = true
+        accessibilityLabel = "\(title)キー"
+        accessibilityTraits = .keyboardKey
+        setPressed(false)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func release() {
+        if isPressed {
+            setPressed(false)
+            onChange?(code, false)
+        }
+    }
+
+    private func setPressed(_ pressed: Bool) {
+        isPressed = pressed
+        backgroundColor = UIColor.white.withAlphaComponent(pressed ? 0.45 : 0.08)
+    }
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard !isPressed else { return }
+        setPressed(true)
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        onChange?(code, true)
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        release()
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        release()
     }
 }

@@ -174,6 +174,13 @@ final class GameViewController: UIViewController {
         virtualPad.onChange = { [weak self] bits in
             self?.sendPad(bits)
         }
+        virtualPad.onKey = { code, pressed in
+            if pressed {
+                X68000_Key_Down(code)
+            } else {
+                X68000_Key_Up(code)
+            }
+        }
         trackpad.translatesAutoresizingMaskIntoConstraints = false
         panel.addSubview(trackpad)
         panel.addSubview(virtualPad)
@@ -229,6 +236,7 @@ final class GameViewController: UIViewController {
     }
 
     private func updatePadOutputButton() {
+        virtualPad.usesKeys = padUsesCursorKeys
         padOutputButton.setTitle(padUsesCursorKeys ? "KEY" : "JOY", for: .normal)
         padOutputButton.accessibilityLabel = padUsesCursorKeys
             ? "方向パッド: カーソルキー（タップでジョイスティックに切り替え）"
