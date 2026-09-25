@@ -16,6 +16,17 @@ final class ScreenViewController: UIViewController {
 
     let skView = SKView(frame: .zero)
     private var aspectConstraint: NSLayoutConstraint?
+    private var centerYConstraint: NSLayoutConstraint?
+    private var topConstraint: NSLayoutConstraint?
+
+    /// Pin the screen to the top of the safe area (portrait, controls below) instead of centring it.
+    var alignsToTop = false {
+        didSet {
+            guard alignsToTop != oldValue, isViewLoaded else { return }
+            centerYConstraint?.isActive = !alignsToTop
+            topConstraint?.isActive = alignsToTop
+        }
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -29,9 +40,12 @@ final class ScreenViewController: UIViewController {
         fillWidth.priority = .defaultHigh
         let fillHeight = skView.heightAnchor.constraint(equalTo: guide.heightAnchor)
         fillHeight.priority = .defaultHigh
+        centerYConstraint = skView.centerYAnchor.constraint(equalTo: guide.centerYAnchor)
+        topConstraint = skView.topAnchor.constraint(equalTo: guide.topAnchor)
+        centerYConstraint?.isActive = !alignsToTop
+        topConstraint?.isActive = alignsToTop
         NSLayoutConstraint.activate([
             skView.centerXAnchor.constraint(equalTo: guide.centerXAnchor),
-            skView.centerYAnchor.constraint(equalTo: guide.centerYAnchor),
             skView.widthAnchor.constraint(lessThanOrEqualTo: guide.widthAnchor),
             skView.heightAnchor.constraint(lessThanOrEqualTo: guide.heightAnchor),
             fillWidth,

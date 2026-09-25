@@ -48,6 +48,19 @@ final class GameViewController: UIViewController {
     private var isSplit = false {
         didSet { if isSplit != oldValue { applyInputMode() } }
     }
+    /// Area of the control panel the controls may use.
+    private let controlArea = UILayoutGuide()
+    private var controlAreaTopToPanel: NSLayoutConstraint?
+    private var controlAreaTopToScreen: NSLayoutConstraint?
+    /// Portrait without a fold split: screen at the top, controls in the space below.
+    private var stacksControlsBelowScreen = false {
+        didSet {
+            guard stacksControlsBelowScreen != oldValue else { return }
+            screenController.alignsToTop = stacksControlsBelowScreen
+            controlAreaTopToPanel?.isActive = !stacksControlsBelowScreen
+            controlAreaTopToScreen?.isActive = stacksControlsBelowScreen
+        }
+    }
     private var inputMode: InputMode = .mouse {
         didSet { applyInputMode() }
     }
@@ -117,6 +130,7 @@ final class GameViewController: UIViewController {
         let panelFrame = controlPanel.view.convert(controlPanel.view.bounds, to: view)
         let screenFrame = screenController.view.convert(screenController.view.bounds, to: view)
         isSplit = !panelFrame.intersects(screenFrame.insetBy(dx: 1, dy: 1))
+        stacksControlsBelowScreen = !isSplit && view.bounds.height > view.bounds.width
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -200,12 +214,21 @@ final class GameViewController: UIViewController {
         padOutputButton.addTarget(self, action: #selector(togglePadOutput), for: .touchUpInside)
         panel.addSubview(padOutputButton)
 
-        let guide = panel.safeAreaLayoutGuide
+        panel.addLayoutGuide(controlArea)
+        let guide = controlArea
+        let safe = panel.safeAreaLayoutGuide
+        controlAreaTopToPanel = controlArea.topAnchor.constraint(equalTo: safe.topAnchor)
+        controlAreaTopToScreen = controlArea.topAnchor.constraint(equalTo: skView.bottomAnchor, constant: 4)
+        controlAreaTopToPanel?.isActive = true
         NSLayoutConstraint.activate([
-            virtualPad.leadingAnchor.constraint(equalTo: panel.leadingAnchor),
-            virtualPad.trailingAnchor.constraint(equalTo: panel.trailingAnchor),
-            virtualPad.topAnchor.constraint(equalTo: panel.topAnchor),
-            virtualPad.bottomAnchor.constraint(equalTo: panel.bottomAnchor),
+            controlArea.leadingAnchor.constraint(equalTo: safe.leadingAnchor),
+            controlArea.trailingAnchor.constraint(equalTo: safe.trailingAnchor),
+            controlArea.bottomAnchor.constraint(equalTo: safe.bottomAnchor),
+
+            virtualPad.leadingAnchor.constraint(equalTo: guide.leadingAnchor),
+            virtualPad.trailingAnchor.constraint(equalTo: guide.trailingAnchor),
+            virtualPad.topAnchor.constraint(equalTo: inputModeButton.bottomAnchor),
+            virtualPad.bottomAnchor.constraint(equalTo: guide.bottomAnchor),
 
             trackpad.leadingAnchor.constraint(equalTo: guide.leadingAnchor, constant: 16),
             trackpad.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -16),
