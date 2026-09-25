@@ -27,14 +27,21 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         }
     }
 
+    /// AVAudioSession の設定は同期呼び出しで、メディアサーバーの応答待ちでブロックすることがある
+    /// （Xcode の Thread Performance Checker が「AVAudioSession Hang Risk」として警告する）。
+    /// 起動中のメインスレッドを止めないよう、専用のシリアルキューで行う。
+    private static let audioSessionQueue = DispatchQueue(label: "MPX68K.audioSession", qos: .userInitiated)
+
     private func configureAudioSession() {
-        let session = AVAudioSession.sharedInstance()
-        do {
-            // 他のアプリの音と混在させる
-            try session.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
-            try session.setActive(true)
-        } catch {
-            errorLog("Audio session setup failed: \(error)", category: .audio)
+        Self.audioSessionQueue.async {
+            let session = AVAudioSession.sharedInstance()
+            do {
+                // 他のアプリの音と混在させる
+                try session.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+                try session.setActive(true)
+            } catch {
+                errorLog("Audio session setup failed: \(error)", category: .audio)
+            }
         }
     }
 }
