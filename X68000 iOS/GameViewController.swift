@@ -37,6 +37,13 @@ final class GameViewController: UIViewController {
     private var inputMode: InputMode = .mouse {
         didSet { applyInputMode() }
     }
+
+    // MARK: Hardware keyboard state
+    /// Key code sent for each held host key, so the matching key-up is sent.
+    private var pressedKeyCodes: [UIKeyboardHIDUsage: UInt32] = [:]
+    private var physicalShiftKeys: Set<UIKeyboardHIDUsage> = []
+    /// SHIFT state as last sent to the X68000.
+    private var x68ShiftDown = false
     private weak var bootMediaAlert: UIAlertController?
 
     private static let diskContentTypes: [UTType] = [
@@ -274,37 +281,79 @@ final class GameViewController: UIViewController {
     // MARK: - Hardware keyboard
 
     override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
-        let unhandled = presses.filter { !sendKey($0, isDown: true) }
+        let unhandled = presses.filter { !keyDown($0) }
         if !unhandled.isEmpty {
             super.pressesBegan(unhandled, with: event)
         }
     }
 
     override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
-        let unhandled = presses.filter { !sendKey($0, isDown: false) }
+        let unhandled = presses.filter { !keyUp($0) }
         if !unhandled.isEmpty {
             super.pressesEnded(unhandled, with: event)
         }
     }
 
     override func pressesCancelled(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
-        let unhandled = presses.filter { !sendKey($0, isDown: false) }
+        let unhandled = presses.filter { !keyUp($0) }
         if !unhandled.isEmpty {
             super.pressesCancelled(unhandled, with: event)
         }
     }
 
-    private func sendKey(_ press: UIPress, isDown: Bool) -> Bool {
-        guard let keyCode = press.key?.keyCode,
-              let x68Key = iOSKeyMap.x68KeyCode(for: keyCode) else {
+    private func keyDown(_ press: UIPress) -> Bool {
+        guard let key = press.key else { return false }
+        let usage = key.keyCode
+
+        if iOSKeyMap.isShift(usage) {
+            physicalShiftKeys.insert(usage)
+            setX68Shift(true)
+            return true
+        }
+        if let code = iOSKeyMap.specialKeyCode(for: usage) {
+            X68000_Key_Down(code)
+            pressedKeyCodes[usage] = code
+            return true
+        }
+
+        // With CTRL held, `characters` is a control code; use the plain key.
+        let text = key.modifierFlags.contains(.control) ? key.charactersIgnoringModifiers : key.characters
+        guard let character = text.first, let mapped = iOSKeyMap.characterKey(for: character) else {
             return false
         }
-        if isDown {
-            X68000_Key_Down(x68Key)
-        } else {
-            X68000_Key_Up(x68Key)
+        // Letters follow the SHIFT key as pressed (CAPS is forwarded to the X68000).
+        // Symbols use the SHIFT state the X68000 JIS layout needs for that character.
+        if !character.isLetter {
+            setX68Shift(mapped.shift)
         }
+        X68000_Key_Down(mapped.code)
+        pressedKeyCodes[usage] = mapped.code
         return true
+    }
+
+    private func keyUp(_ press: UIPress) -> Bool {
+        guard let usage = press.key?.keyCode else { return false }
+
+        if iOSKeyMap.isShift(usage) {
+            physicalShiftKeys.remove(usage)
+            setX68Shift(!physicalShiftKeys.isEmpty)
+            return true
+        }
+        guard let code = pressedKeyCodes.removeValue(forKey: usage) else { return false }
+        X68000_Key_Up(code)
+        // Put SHIFT back to what the user is actually holding.
+        setX68Shift(!physicalShiftKeys.isEmpty)
+        return true
+    }
+
+    private func setX68Shift(_ down: Bool) {
+        guard down != x68ShiftDown else { return }
+        x68ShiftDown = down
+        if down {
+            X68000_Key_Down(iOSKeyMap.shiftKey)
+        } else {
+            X68000_Key_Up(iOSKeyMap.shiftKey)
+        }
     }
 }
 

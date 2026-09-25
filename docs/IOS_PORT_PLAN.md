@@ -125,5 +125,12 @@ iPhoneOS 27.0 SDK（arm64, `-DHAVE_C68K -DTARGET_IOS`）で `clang -fsyntax-only
   ※ macOS 版の画面上ジョイカード（`X68JoyCard`）は A/B が逆（A=`JOY_TRG1`）。物理パッド（`JoyController`）は規格どおり。
 - 右上のボタンでマウス／パッドを切り替え（`virtual_pad` に保存）。GameScene の旧タッチマウス（絶対座標）と
   シーン内の入力モード表示は iOS では使わない。
-- 既知の問題: ハードウェアキーボードが US 配列のキー位置をそのまま送るため、記号が JIS 配列としてずれる
-  （例: `(` は US の `*` 位置）。`iOSKeyMap` を文字ベースまたは JIS 配列対応にする必要がある。
+- ハードウェアキーボード（`iOSKeyMap`）: 印字可能文字は入力された文字（`UIKey.characters`）から
+  「X68000 JIS 配列のどのキーか＋SHIFT が必要か」を決め、SHIFT を一時的に上げ下げして送る。
+  US 配列・JIS 配列どちらのホストキーボードでも刻印どおりに入力できる（記号・大小文字を Human68k で確認）。
+  特殊キー（矢印・F1〜F10・Ctrl・Caps・テンキー等）は KeyTable 拡張領域の位置で送る。SHIFT キー自体は押下中そのまま送る。
+  - F1〜F10 は KeyTable の f.1〜f.10（0x1be〜0x1c7）を使用。未検証（シミュレータから送れない）。
+- upstream（macOS 版）への報告候補:
+  - KeyTable の ASCII `':'` と `';'` の割り当てが逆（`':'`→`;+` キー、`';'`→`:*` キー）。
+  - macOS 版はホストの SHIFT 状態をそのまま送るため、US 配列で `:` `=` `@` `^` `+` `*` などがずれるはず。
+  - macOS 版の F1〜F10（0x163〜0x16c）は KeyTable の空き（NC）を指しているように見える。
