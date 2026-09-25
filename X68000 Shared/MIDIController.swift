@@ -75,18 +75,8 @@ class MIDIController {
                                                    includingResourceValuesForKeys: nil, relativeTo: nil)
                 scoped = false
             }
-            configurationGeneration += 1
-            let generation = configurationGeneration
-            SC55Synthesizer.shared.start(roms: roms) { [weak self] error in
-                guard let self, self.configurationGeneration == generation else { return }
-                self.clearPendingMIDI()
-                if error == nil && !self.usesInternalSC55 {
-                    // Silence the previous destination before changing the route.
-                    for channel in UInt8(0)..<16 {
-                        self.sendEventImmediate([0xB0 | channel, 120, 0])
-                    }
-                }
-                self.usesInternalSC55 = error == nil
+            startInternalSC55(roms: roms) { [weak self] error in
+                guard let self else { return }
                 UserDefaults.standard.set(error == nil, forKey: self.sc55EnabledKey)
                 if error == nil {
                     UserDefaults.standard.set(bookmark, forKey: self.sc55BookmarkKey)
@@ -97,6 +87,91 @@ class MIDIController {
             }
         } catch { completion(error) }
     }
+
+    /// Starts the internal SC-55 with loaded ROMs and routes MIDI to it on success.
+    /// `completion` is not called if another configuration started in the meantime.
+    private func startInternalSC55(roms: [Data], completion: @escaping (Error?) -> Void) {
+        configurationGeneration += 1
+        let generation = configurationGeneration
+        SC55Synthesizer.shared.start(roms: roms) { [weak self] error in
+            guard let self, self.configurationGeneration == generation else { return }
+            self.clearPendingMIDI()
+            if error == nil && !self.usesInternalSC55 {
+                // Silence the previous destination before changing the route.
+                for channel in UInt8(0)..<16 {
+                    self.sendEventImmediate([0xB0 | channel, 120, 0])
+                }
+            }
+            self.usesInternalSC55 = error == nil
+            completion(error)
+        }
+    }
+
+    #if os(iOS)
+    // MARK: - iOS: SC-55 ROMs in Documents/MPX68K
+    //
+    // On iOS the ROMs live next to IPLROM.DAT in the app's Documents/MPX68K folder
+    // instead of a user-chosen folder. They are optional: without them (or if they
+    // fail to load) MIDI simply goes to external CoreMIDI destinations, silently.
+
+    /// Whether the user wants the internal SC-55 when its ROMs are present (default: yes).
+    private static let iOSPrefersSC55Key = "ios_sc55_preferred"
+
+    var prefersInternalSC55: Bool {
+        get { UserDefaults.standard.object(forKey: Self.iOSPrefersSC55Key) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: Self.iOSPrefersSC55Key) }
+    }
+
+    static var sc55LibraryFolder: URL? {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?
+            .appendingPathComponent("MPX68K", isDirectory: true)
+    }
+
+    /// All five SC-55 ROM files exist in Documents/MPX68K (sizes are checked when loading).
+    static var hasSC55ROMsInLibrary: Bool {
+        guard let folder = sc55LibraryFolder else { return false }
+        return SC55Synthesizer.requiredROMs.allSatisfy { name, _ in
+            FileManager.default.fileExists(atPath: folder.appendingPathComponent(name).path)
+        }
+    }
+
+    /// Uses the internal SC-55 if preferred and its ROMs load; otherwise external MIDI.
+    /// Never shows an error: a missing or broken ROM set only logs and falls back.
+    /// `completion(true)` means the internal SC-55 is now active. Call on the main queue.
+    func applyIOSMIDIOutput(completion: ((Bool) -> Void)? = nil) {
+        guard prefersInternalSC55, Self.hasSC55ROMsInLibrary, let folder = Self.sc55LibraryFolder else {
+            // Also cancels a ROM load still in flight.
+            useExternalMIDI()
+            completion?(false)
+            return
+        }
+        configurationGeneration += 1
+        let generation = configurationGeneration
+        // Reading ~3.5 MB of ROMs off the main thread.
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let result = Result { try SC55Synthesizer.readROMs(from: folder) }
+            DispatchQueue.main.async {
+                guard let self, self.configurationGeneration == generation else { return }
+                switch result {
+                case .success(let roms):
+                    self.startInternalSC55(roms: roms) { [weak self] error in
+                        if let error {
+                            warningLog("SC-55 unavailable, using external MIDI: \(error.localizedDescription)", category: .audio)
+                            self?.useExternalMIDI()
+                        } else {
+                            infoLog("Internal SC-55 enabled (Documents/MPX68K)", category: .audio)
+                        }
+                        completion?(error == nil)
+                    }
+                case .failure(let error):
+                    warningLog("SC-55 ROMs not usable, using external MIDI: \(error.localizedDescription)", category: .audio)
+                    if self.usesInternalSC55 { self.useExternalMIDI() }
+                    completion?(false)
+                }
+            }
+        }
+    }
+    #endif
 
     func useExternalMIDI() {
         configurationGeneration += 1
@@ -179,6 +254,11 @@ class MIDIController {
             self?.useExternalMIDI()
             self?.reportSC55Error(SC55Synthesizer.failure(message))
         }
+        #if os(iOS)
+        DispatchQueue.main.async { [weak self] in
+            self?.applyIOSMIDIOutput()
+        }
+        #else
         if UserDefaults.standard.bool(forKey: sc55EnabledKey) {
             DispatchQueue.main.async { [weak self] in
                 self?.restoreSC55 { error in
@@ -186,6 +266,7 @@ class MIDIController {
                 }
             }
         }
+        #endif
     }
     let clientName: CFString = "MPX68K" as CFString
     deinit {

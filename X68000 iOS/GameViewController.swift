@@ -419,11 +419,71 @@ final class GameViewController: UIViewController {
     private func diskMenuElements() -> [UIMenuElement] {
         var elements: [UIMenuElement] = (0..<2).map(floppyMenu(for:))
         elements.append(hardDiskMenu())
+        if let midi = midiMenu() { elements.append(midi) }
         let reset = UIAction(title: "リセット", image: UIImage(systemName: "arrow.counterclockwise")) { [weak self] _ in
             self?.gameScene?.resetSystem()
         }
         elements.append(UIMenu(options: .displayInline, children: [reset]))
         return elements
+    }
+
+    /// MIDI output: internal SC-55 (ROMs in Documents/MPX68K, optional) or external CoreMIDI.
+    private func midiMenu() -> UIMenu? {
+        guard let midi = gameScene?.midiOutputController else { return nil }
+        let hasROMs = MIDIController.hasSC55ROMsInLibrary
+        let internalOn = midi.usesInternalSC55
+
+        let useInternal = UIAction(title: "内蔵 SC-55",
+                                   subtitle: hasROMs ? nil : "ROM を MPX68K フォルダに置くと使えます",
+                                   image: UIImage(systemName: "pianokeys"),
+                                   attributes: hasROMs ? [] : .disabled,
+                                   state: internalOn ? .on : .off) { [weak self] _ in
+            midi.prefersInternalSC55 = true
+            midi.applyIOSMIDIOutput { ok in
+                // Only an explicit choice reports a problem; startup falls back silently.
+                if !ok { self?.showSC55Unavailable() }
+            }
+        }
+        let useExternal = UIAction(title: "外部 MIDI",
+                                   image: UIImage(systemName: "cable.connector"),
+                                   state: internalOn ? .off : .on) { _ in
+            midi.prefersInternalSC55 = false
+            midi.applyIOSMIDIOutput()
+        }
+        var children: [UIMenuElement] = [UIMenu(options: .displayInline, children: [useInternal, useExternal])]
+
+        if internalOn {
+            let current = Int((SC55Synthesizer.shared.volume * 100).rounded())
+            let levels = [25, 50, 75, 100]
+            let volume = UIMenu(title: "SC-55 音量", image: UIImage(systemName: "speaker.wave.2"),
+                                children: levels.map { level in
+                UIAction(title: "\(level)%", state: current == level ? .on : .off) { _ in
+                    SC55Synthesizer.shared.volume = Double(level) / 100
+                }
+            })
+            children.append(volume)
+            let test = UIAction(title: "SC-55 テスト音", image: UIImage(systemName: "play.circle")) { _ in
+                // Piano C major chord at full velocity, 1.5 s (a single note is quite quiet).
+                let notes: [UInt8] = [48, 60, 64, 67]
+                for note in notes { SC55Synthesizer.shared.send([0x90, note, 127]) }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    for note in notes { SC55Synthesizer.shared.send([0x80, note, 0]) }
+                }
+            }
+            children.append(test)
+        }
+        return UIMenu(title: "MIDI：\(internalOn ? "内蔵 SC-55" : "外部 MIDI")",
+                      image: UIImage(systemName: "music.note"), children: children)
+    }
+
+    private func showSC55Unavailable() {
+        let alert = UIAlertController(
+            title: "内蔵 SC-55 を使えません",
+            message: "MPX68K フォルダの SC-55 ROM を読み込めなかったため、外部 MIDI に出力します。\n"
+                + "初代 SC-55 の sc55_rom1.bin、sc55_rom2.bin、sc55_waverom1.bin〜sc55_waverom3.bin が必要です（mkII は非対応）。",
+            preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
 
     private func floppyMenu(for drive: Int) -> UIMenu {
