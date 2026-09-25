@@ -31,6 +31,8 @@ void Keyboard_KeyDown(DWORD vkcode);
 void Keyboard_KeyUp(DWORD vkcode);
 void Keyboard_Int(void);
 void send_keycode(BYTE code, int flag);
+void Keyboard_ScancodeDown(BYTE code);
+void Keyboard_ScancodeUp(BYTE code);
 int Keyboard_get_key_ptr(int x, int y);
 void Keyboard_skbd(void);
 int Keyboard_IsSwKeyboard(void);

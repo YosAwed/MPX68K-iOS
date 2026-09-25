@@ -33,6 +33,9 @@ const int X68000_IsFrameDirty(void);
 void X68000_AudioCallBack(void* buffer, const unsigned int sample);
 void X68000_Key_Down( unsigned int vkcode );
 void X68000_Key_Up( unsigned int vkcode );
+// X68000 key codes sent directly (on-screen keyboard)
+void X68000_Key_DownScancode( unsigned int scancode );
+void X68000_Key_UpScancode( unsigned int scancode );
 const int X68000_GetScreenWidth();
 const int X68000_GetScreenHeight();
 

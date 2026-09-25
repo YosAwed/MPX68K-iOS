@@ -1322,6 +1322,12 @@ void X68000_Key_Down( unsigned int vkcode ) {
 void X68000_Key_Up( unsigned int vkcode ) {
     Keyboard_KeyUp(vkcode);
 }
+void X68000_Key_DownScancode( unsigned int scancode ) {
+    Keyboard_ScancodeDown((BYTE)scancode);
+}
+void X68000_Key_UpScancode( unsigned int scancode ) {
+    Keyboard_ScancodeUp((BYTE)scancode);
+}
 const int X68000_GetScreenWidth()
 {
     return TextDotX;

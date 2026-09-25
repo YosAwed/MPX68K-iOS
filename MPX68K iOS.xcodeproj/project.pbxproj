@@ -271,6 +271,10 @@
 			isa = PBXBuildFile;
 			fileRef = 8259C381D9D6C50DBE3F1A3A;
 		};
+		A0891D44FC285C8600C0D209 = {
+			isa = PBXBuildFile;
+			fileRef = D3517E395C388D61C9AE1DAD;
+		};
 		A2CDAB11B546120842C94160 = {
 			isa = PBXBuildFile;
 			fileRef = 098A1AD61710F8946A2DE3EA;
@@ -1170,6 +1174,12 @@
 			path = fdd.h;
 			sourceTree = "<group>";
 		};
+		D3517E395C388D61C9AE1DAD = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = X68KeyboardView.swift;
+			sourceTree = "<group>";
+		};
 		D35DA4FBCC3A078BD35F38EC = {
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.c.c;
@@ -1652,6 +1662,7 @@
 				56FA17BEEAAA39C4BDF583C2,
 				9963EAE32ABCEF100317E473,
 				F5F807D2D5700A5C83B3F048,
+				D3517E395C388D61C9AE1DAD,
 			);
 			path = "X68000 iOS";
 			sourceTree = "<group>";
@@ -1821,6 +1832,7 @@
 				F4DA9407849ADA78C030D829,
 				69C740C8A6F0AF5F36E6FF6D,
 				86E45650E8269331647E2B01,
+				A0891D44FC285C8600C0D209,
 				7782D34793FDDCA1F0711821,
 				01F8ED944C41A6499DD19C29,
 			);

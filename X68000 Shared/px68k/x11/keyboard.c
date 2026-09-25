@@ -352,6 +352,18 @@ void send_keycode(BYTE code, int flag)
 	}
 }
 
+// Send an X68000 key code directly, bypassing KeyTable. Used by the iOS
+// on-screen keyboard for keys without an ASCII/host mapping (XF1-5, OPT.1/2...).
+void Keyboard_ScancodeDown(BYTE code)
+{
+	send_keycode(code, P6K_DOWN);
+}
+
+void Keyboard_ScancodeUp(BYTE code)
+{
+	send_keycode(code, P6K_UP);
+}
+
 static BYTE get_x68k_keycode(DWORD wp)
 {
 	if (wp < KEYTABLE_MAX) {

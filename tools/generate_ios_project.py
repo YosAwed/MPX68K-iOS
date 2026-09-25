@@ -38,6 +38,7 @@ IOS_SOURCES = [
     f"{IOS_DIR}/TouchMouseController.swift",
     f"{IOS_DIR}/VirtualPadView.swift",
     f"{IOS_DIR}/ScreenLayout.swift",
+    f"{IOS_DIR}/X68KeyboardView.swift",
 ]
 IOS_RESOURCES = [
     f"{IOS_DIR}/Assets.xcassets",

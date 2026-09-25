@@ -37,6 +37,11 @@ final class GameViewController: UIViewController {
     private let virtualPad = VirtualPadView()
     private let inputModeButton = UIButton(type: .system)
     private let trackpad = TrackpadSurfaceView()
+    private let fullKeyboard = X68KeyboardView()
+    /// Inner display (fully open or partially folded) held upright: show the full keyboard.
+    private var showsFullKeyboard = false {
+        didSet { if showsFullKeyboard != oldValue { applyInputMode() } }
+    }
     private let padOutputButton = UIButton(type: .system)
     private var padUsesCursorKeys = UserDefaults.standard.bool(forKey: GameViewController.padCursorKeysDefaultsKey)
     private var lastPadBits: UInt8 = 0
@@ -126,7 +131,12 @@ final class GameViewController: UIViewController {
         let panelFrame = controlPanel.view.convert(controlPanel.view.bounds, to: view)
         let screenFrame = screenController.view.convert(screenController.view.bounds, to: view)
         isSplit = !panelFrame.intersects(screenFrame.insetBy(dx: 1, dy: 1))
-        stacksControlsBelowScreen = !isSplit && view.bounds.height > view.bounds.width
+        let isPortrait = view.bounds.height > view.bounds.width
+        stacksControlsBelowScreen = !isSplit && isPortrait
+        // The inner display's short side is well over 600 pt; the outer display's is not.
+        let screenBounds = view.window?.windowScene?.screen.bounds ?? .zero
+        let isInnerDisplay = min(screenBounds.width, screenBounds.height) >= 600
+        showsFullKeyboard = isPortrait && isInnerDisplay
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -195,6 +205,16 @@ final class GameViewController: UIViewController {
         panel.addSubview(trackpad)
         panel.addSubview(virtualPad)
 
+        fullKeyboard.translatesAutoresizingMaskIntoConstraints = false
+        fullKeyboard.onKey = { code, pressed in
+            if pressed {
+                X68000_Key_DownScancode(UInt32(code))
+            } else {
+                X68000_Key_UpScancode(UInt32(code))
+            }
+        }
+        panel.addSubview(fullKeyboard)
+
         inputModeButton.translatesAutoresizingMaskIntoConstraints = false
         inputModeButton.tintColor = UIColor.white.withAlphaComponent(0.8)
         inputModeButton.backgroundColor = UIColor.white.withAlphaComponent(0.12)
@@ -220,6 +240,11 @@ final class GameViewController: UIViewController {
             controlArea.leadingAnchor.constraint(equalTo: safe.leadingAnchor),
             controlArea.trailingAnchor.constraint(equalTo: safe.trailingAnchor),
             controlArea.bottomAnchor.constraint(equalTo: safe.bottomAnchor),
+
+            fullKeyboard.leadingAnchor.constraint(equalTo: guide.leadingAnchor, constant: 6),
+            fullKeyboard.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -6),
+            fullKeyboard.topAnchor.constraint(equalTo: guide.topAnchor, constant: 8),
+            fullKeyboard.bottomAnchor.constraint(equalTo: guide.bottomAnchor, constant: -8),
 
             virtualPad.leadingAnchor.constraint(equalTo: guide.leadingAnchor),
             virtualPad.trailingAnchor.constraint(equalTo: guide.trailingAnchor),
@@ -290,6 +315,19 @@ final class GameViewController: UIViewController {
     }
 
     private func applyInputMode() {
+        fullKeyboard.isHidden = !showsFullKeyboard
+        inputModeButton.isHidden = showsFullKeyboard
+        if showsFullKeyboard {
+            // Keyboard layout: the screen stays a touch mouse; pad and trackpad are hidden.
+            virtualPad.releaseAll()
+            virtualPad.isHidden = true
+            trackpad.isHidden = true
+            padOutputButton.isHidden = true
+            touchMouse?.isEnabled = true
+            return
+        }
+        fullKeyboard.releaseAll()
+
         let isPad = (inputMode == .pad)
         touchMouse?.isEnabled = !isPad
         virtualPad.isHidden = !isPad
