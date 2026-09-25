@@ -1,0 +1,1950 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+		01F8ED944C41A6499DD19C29 = {
+			isa = PBXBuildFile;
+			fileRef = 9D204B425700F71B8AD95D08;
+			settings = {
+				COMPILER_FLAGS = "-O2";
+			};
+		};
+		038AA36A206D613F5C0FE002 = {
+			isa = PBXBuildFile;
+			fileRef = 78BC124FFAA8F1EF8389AC21;
+		};
+		038F4DD6BA6BB43AAE80E006 = {
+			isa = PBXBuildFile;
+			fileRef = B30CB3DF0C5F8D494EB956DC;
+			settings = {
+				COMPILER_FLAGS = "-O2";
+			};
+		};
+		0B801A555AAB186A490DD854 = {
+			isa = PBXBuildFile;
+			fileRef = 3FCAB0F789A96C66CBBA87CF;
+		};
+		114311122F2B759CF619434D = {
+			isa = PBXBuildFile;
+			fileRef = 7527E6D5EE82200D52C6F79F;
+		};
+		1156D335ADDCFE166FA410F2 = {
+			isa = PBXBuildFile;
+			fileRef = 64F80B22B6660579B22DB5F0;
+		};
+		118008E154E85B45F1CD68A5 = {
+			isa = PBXBuildFile;
+			fileRef = 64E3E4A7DB031C4BF80314AC;
+		};
+		11970791008FA2E3BECD8EBA = {
+			isa = PBXBuildFile;
+			fileRef = 801B708F5AEF6137B50D1169;
+		};
+		1299BD1B18F42979486152A1 = {
+			isa = PBXBuildFile;
+			fileRef = AB2F42E07145945C08CA5558;
+		};
+		129BD8653116EEAB6784AEE0 = {
+			isa = PBXBuildFile;
+			fileRef = 77598C03183347F4BE15C191;
+		};
+		13269D1CB1EBBC5A590E0CE3 = {
+			isa = PBXBuildFile;
+			fileRef = 568C272F312F36D45CA1AE97;
+		};
+		1368B374AA0F4C1F68A465FA = {
+			isa = PBXBuildFile;
+			fileRef = ECD52245CB989CDA3A7F725F;
+		};
+		1407AFA263FC3540F3147717 = {
+			isa = PBXBuildFile;
+			fileRef = ACFB235D7EB48FABFE51F174;
+		};
+		14526DB5D4B824FAB14414B1 = {
+			isa = PBXBuildFile;
+			fileRef = 8D7AC80DC85E8A644B68004A;
+		};
+		1DD0C6D3D2CC4BFB53F61BF8 = {
+			isa = PBXBuildFile;
+			fileRef = B78FA99BE2DB3E028FBDF75A;
+		};
+		215FBB6D8D3CFB6BC7C4CC69 = {
+			isa = PBXBuildFile;
+			fileRef = 6F0E41B5FB298E93E5146BDA;
+		};
+		27363AF3B81C04E24A86B851 = {
+			isa = PBXBuildFile;
+			fileRef = 91730AF8ACC0DBA055C1C44A;
+		};
+		2930F7AE74F62130A1725179 = {
+			isa = PBXBuildFile;
+			fileRef = E73411779E958E733ED82AD0;
+		};
+		29C9A7C31971EF52794E6A41 = {
+			isa = PBXBuildFile;
+			fileRef = 747958C25E3D33E0AC12E075;
+		};
+		2EC8476A013C7716ACC04DB2 = {
+			isa = PBXBuildFile;
+			fileRef = D35DA4FBCC3A078BD35F38EC;
+		};
+		30E78B924A8ED6E0626CD2C0 = {
+			isa = PBXBuildFile;
+			fileRef = A24D2B985C9E6826FFD5B7B8;
+		};
+		37CBC7051FA924728CDDAA1F = {
+			isa = PBXBuildFile;
+			fileRef = 0A049FD9CD97C3C1B5475E97;
+		};
+		39D1EC48DB0A8D34ECBA974C = {
+			isa = PBXBuildFile;
+			fileRef = 7F2C67B8D692F1E47531E151;
+		};
+		3CBA026A00B17E413EF69654 = {
+			isa = PBXBuildFile;
+			fileRef = 187005C24C91C44EE7D6ED18;
+		};
+		3E347667A504EE5EC3DCB8A9 = {
+			isa = PBXBuildFile;
+			fileRef = 2E79DA81FF2955EFAAD698AE;
+		};
+		3E982E8AE677EDBB7760753B = {
+			isa = PBXBuildFile;
+			fileRef = A10251408214E1502A062B76;
+		};
+		44003741F7A34140FF6B1CB4 = {
+			isa = PBXBuildFile;
+			fileRef = EA96441E4CB269080940A1B8;
+		};
+		459BDC75B07EEB7603A92594 = {
+			isa = PBXBuildFile;
+			fileRef = 246F438FCDBEE7578892BB33;
+		};
+		48697545D85D07C68FD4468E = {
+			isa = PBXBuildFile;
+			fileRef = 2C5CAC9B1DF3A4A7B3DAEDE9;
+		};
+		48697D4C5AD6105649520614 = {
+			isa = PBXBuildFile;
+			fileRef = FF5AB6CCF5151B09ABD317E6;
+		};
+		4A20CCB41B3873252A661607 = {
+			isa = PBXBuildFile;
+			fileRef = 84C189A296141A2F049234E8;
+			settings = {
+				COMPILER_FLAGS = "-O2";
+			};
+		};
+		4AD10C8153128D775A5822F5 = {
+			isa = PBXBuildFile;
+			fileRef = 3C9A76FD37E50D7C6CEFA64D;
+		};
+		4AE26866BBBA399C605CF6B0 = {
+			isa = PBXBuildFile;
+			fileRef = FE593734E4FD7D835C039322;
+			settings = {
+				COMPILER_FLAGS = "-O2";
+			};
+		};
+		4B0D8AB211F6ECED2ECAD38A = {
+			isa = PBXBuildFile;
+			fileRef = C88B516B5BEEC7496C6379F0;
+		};
+		4E4CF801654DCDF33BB17197 = {
+			isa = PBXBuildFile;
+			fileRef = 2E6810022CC08D7CAFC14E30;
+		};
+		52E07A379191F17D2D4B6532 = {
+			isa = PBXBuildFile;
+			fileRef = D4A3AFB2C7978972D1D8D1E3;
+		};
+		5A33BC9C6411C507410022D0 = {
+			isa = PBXBuildFile;
+			fileRef = 8848D1A1D071113D724FB709;
+		};
+		5B84404B037761FA96A6E70C = {
+			isa = PBXBuildFile;
+			fileRef = 4DB6F4A520A95643FB2DCBDB;
+		};
+		607F8F56259C5DCBEDCFF9B3 = {
+			isa = PBXBuildFile;
+			fileRef = 4A910DC077A8EE96F99A90C4;
+		};
+		65DACDDE3DFB0358C39DD790 = {
+			isa = PBXBuildFile;
+			fileRef = 060828FBD7B6E3919DF4092C;
+			settings = {
+				COMPILER_FLAGS = "-O2";
+			};
+		};
+		6656AD1EB21FB620DC27E493 = {
+			isa = PBXBuildFile;
+			fileRef = 68B3AA64932234708C2CD636;
+		};
+		66E208D34AC0A39B3652FB5A = {
+			isa = PBXBuildFile;
+			fileRef = 00CCCFFB51A2D58CB9514F79;
+		};
+		6AE69A556A4AA5F49CDD93F6 = {
+			isa = PBXBuildFile;
+			fileRef = 566BD4617AF87D008FAEB23A;
+		};
+		721B3E551294EB286D6F408E = {
+			isa = PBXBuildFile;
+			fileRef = EA0FE2142EE64DEFA184A865;
+		};
+		75356C875811E7345CBFFB1D = {
+			isa = PBXBuildFile;
+			fileRef = 179FC47979A76904F7B9FA80;
+		};
+		7782D34793FDDCA1F0711821 = {
+			isa = PBXBuildFile;
+			fileRef = DA22DA4B73CDD030D7B9648E;
+			settings = {
+				COMPILER_FLAGS = "-O2";
+			};
+		};
+		788DFAA1CDB351DC97AAEE38 = {
+			isa = PBXBuildFile;
+			fileRef = 931C5444135843F6482C9C31;
+		};
+		792D17177A270D2E26E40631 = {
+			isa = PBXBuildFile;
+			fileRef = 293D5E6F4172A9F35A52A58F;
+		};
+		7CD27E0368D3CF33F6BFF860 = {
+			isa = PBXBuildFile;
+			fileRef = 1315D8074DC770152839EFFA;
+		};
+		7EF7CBA16AEB81C008B3B2FF = {
+			isa = PBXBuildFile;
+			fileRef = 31AE4D538EEA83F4D05C7754;
+		};
+		839D49CB887ED9E72C4039CE = {
+			isa = PBXBuildFile;
+			fileRef = B0308BEB573B6229F9633029;
+		};
+		8662D3D6C2BC8F9EF5D9FAB7 = {
+			isa = PBXBuildFile;
+			fileRef = 00D82B8D72D3F2872A895454;
+		};
+		885C7A6B633F18B69AEB8CBF = {
+			isa = PBXBuildFile;
+			fileRef = B8E385AE1022583DFEEA60DF;
+		};
+		8ABA7FFF64C3BC156E748D2A = {
+			isa = PBXBuildFile;
+			fileRef = 4F2C5B7E50EFBF5312B46E64;
+		};
+		8CDB4C77F8D7DAF9E282CBA0 = {
+			isa = PBXBuildFile;
+			fileRef = FC6393C86FDDD5234795F265;
+		};
+		93FD7C5F9FC45ADFBB30EE2B = {
+			isa = PBXBuildFile;
+			fileRef = 18CFBFED7ED69964CBBD4CF7;
+		};
+		972B1008A7301F7AF0CE8F72 = {
+			isa = PBXBuildFile;
+			fileRef = DCEB573A8C67A795530DFF3B;
+		};
+		97A8E4B9A7B46270BED675AE = {
+			isa = PBXBuildFile;
+			fileRef = 78C77D6172024721E9264F42;
+		};
+		98025E03140DD9207DBE430F = {
+			isa = PBXBuildFile;
+			fileRef = A61D19B4CA01FDC87BC88E4B;
+		};
+		A00854CD02F9E4C86058D07C = {
+			isa = PBXBuildFile;
+			fileRef = 8259C381D9D6C50DBE3F1A3A;
+		};
+		A2CDAB11B546120842C94160 = {
+			isa = PBXBuildFile;
+			fileRef = 098A1AD61710F8946A2DE3EA;
+		};
+		A32842F8C0F7FBB963FB8AB5 = {
+			isa = PBXBuildFile;
+			fileRef = 6C79FC442B220B157A3FB2F6;
+		};
+		A4D775F9C440A5E430B93B73 = {
+			isa = PBXBuildFile;
+			fileRef = 7C045EDAE85DEE77A9C3EEFF;
+		};
+		A5F924FD3391FEB18955CD65 = {
+			isa = PBXBuildFile;
+			fileRef = EFA6DAB2B57E5C1B700C2E7B;
+		};
+		ABA55A612F7D844B15E12D27 = {
+			isa = PBXBuildFile;
+			fileRef = 55421132A3AB0AF7881910A7;
+		};
+		ABCA049909B97E7752C90DF5 = {
+			isa = PBXBuildFile;
+			fileRef = EBBAFFBEB182C31137A78F3B;
+		};
+		B12CF5CCAEDFD62C7F663A66 = {
+			isa = PBXBuildFile;
+			fileRef = D772D5786B4267FA116FAF29;
+		};
+		B67ED45E1D74E48923666D8A = {
+			isa = PBXBuildFile;
+			fileRef = 001EC76C0B41AB85B0377472;
+		};
+		BAF5A488A4E117B4507986F9 = {
+			isa = PBXBuildFile;
+			fileRef = 793D7A745D4606513EF7AE4F;
+		};
+		BD5B79DFEE0D042A267DA8B7 = {
+			isa = PBXBuildFile;
+			fileRef = F61A0A11937724D3EBB20162;
+		};
+		BFDB687F7EF0D636BE67ED38 = {
+			isa = PBXBuildFile;
+			fileRef = 7062696ADFB008E954E5F8B0;
+		};
+		C09FD26DF8360DFD78B05ADB = {
+			isa = PBXBuildFile;
+			fileRef = CD2541504BF4962D46B11567;
+		};
+		C1B8CBD648535D117908C4EE = {
+			isa = PBXBuildFile;
+			fileRef = B5D5686342513EC8E2AE9BD8;
+		};
+		C56B534F6AB2F7EE2CEF4BC5 = {
+			isa = PBXBuildFile;
+			fileRef = 002AEEDA20B5D396D5439790;
+		};
+		C5B8B6D63C19B6470031DBC0 = {
+			isa = PBXBuildFile;
+			fileRef = F013AFD6823B46A4CD64E1BA;
+		};
+		CD416A9254226B7C35BF9A6D = {
+			isa = PBXBuildFile;
+			fileRef = C76C1347F3B52E282BC3C9F6;
+			settings = {
+				COMPILER_FLAGS = "-O2";
+			};
+		};
+		D366539480F8DE26FEC08EBF = {
+			isa = PBXBuildFile;
+			fileRef = D99F19FBFE80A90B493F73DF;
+		};
+		D3BA68714F2B0479E217B95A = {
+			isa = PBXBuildFile;
+			fileRef = 57A48AEB4B28753B374FE15A;
+		};
+		D4F6064533E761B673FF4C80 = {
+			isa = PBXBuildFile;
+			fileRef = FB2387F00521C209044B82D1;
+		};
+		DB42D20B97DA64BBD630E8DF = {
+			isa = PBXBuildFile;
+			fileRef = D7B3D08EE45DAA66A93A8936;
+		};
+		DC853E08BC125094C89CDCC3 = {
+			isa = PBXBuildFile;
+			fileRef = EFD341EC4A607388492ABC10;
+		};
+		E70EA787791DE068AA59FEBE = {
+			isa = PBXBuildFile;
+			fileRef = BF588A54B0B0AACA84DAAD19;
+		};
+		E7713ED133DE23D36E7DBF2B = {
+			isa = PBXBuildFile;
+			fileRef = EF835B02DFBE091B18C2F6F0;
+		};
+		E80D6C043E0C507AC5200B8C = {
+			isa = PBXBuildFile;
+			fileRef = F6DFF9CA0B26EEC59EBD8AA8;
+		};
+		E8B9CB3C2FC6C85EED4A0CEC = {
+			isa = PBXBuildFile;
+			fileRef = C8793D181D939260583CDB59;
+		};
+		EACE5FFB6CEBCDCCA93048E4 = {
+			isa = PBXBuildFile;
+			fileRef = 9ABA6E7F74423EA47B43B613;
+		};
+		F00BB7AD55359581E16C964B = {
+			isa = PBXBuildFile;
+			fileRef = 28ECB7E1C560B20B5AE2D091;
+			settings = {
+				COMPILER_FLAGS = "-O2";
+			};
+		};
+		F05CA80E045B91815EF44A09 = {
+			isa = PBXBuildFile;
+			fileRef = 0853812E43CE949A6915310D;
+		};
+		F1B177CAB38397EEE3D8409E = {
+			isa = PBXBuildFile;
+			fileRef = CD7517DBDE5E2B7AF7D64EC4;
+		};
+		F2A9D3E9B3A32C027245AFBA = {
+			isa = PBXBuildFile;
+			fileRef = EF31016BE55688D043B851A5;
+		};
+		F4F21902C2AFFBD91DABEFBA = {
+			isa = PBXBuildFile;
+			fileRef = 0CB22166ABDC8DD62BD144C2;
+		};
+		FD8E7DA2177E118968B7DE71 = {
+			isa = PBXBuildFile;
+			fileRef = 616BC97289D47D8EF111832E;
+		};
+		FF005FD9D32BE59F182CAAFA = {
+			isa = PBXBuildFile;
+			fileRef = EDA35F88103A1AC07DA0C3D2;
+		};
+		001EC76C0B41AB85B0377472 = {
+			isa = PBXFileReference;
+			lastKnownFileType = image.png;
+			path = jStick.png;
+			sourceTree = "<group>";
+		};
+		002AEEDA20B5D396D5439790 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.cpp.cpp;
+			path = fmtimer.cpp;
+			sourceTree = "<group>";
+		};
+		00CCCFFB51A2D58CB9514F79 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = m68000.c;
+			sourceTree = "<group>";
+		};
+		00D82B8D72D3F2872A895454 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = scc.c;
+			sourceTree = "<group>";
+		};
+		060828FBD7B6E3919DF4092C = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.cpp.cpp;
+			path = pcm.cpp;
+			sourceTree = "<group>";
+		};
+		07BB062655214784F1A726A0 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = sasi.h;
+			sourceTree = "<group>";
+		};
+		0853812E43CE949A6915310D = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = CGROM_DAT.c;
+			sourceTree = "<group>";
+		};
+		098A1AD61710F8946A2DE3EA = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = X68Logger.swift;
+			sourceTree = "<group>";
+		};
+		0A049FD9CD97C3C1B5475E97 = {
+			isa = PBXFileReference;
+			lastKnownFileType = text;
+			path = menu_str_sjis.txt;
+			sourceTree = "<group>";
+		};
+		0C6EB6B3793893B5A734F51C = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = sysport.h;
+			sourceTree = "<group>";
+		};
+		0CB22166ABDC8DD62BD144C2 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = disk_xdf.c;
+			sourceTree = "<group>";
+		};
+		0CDCA340D6F6B859AA5DDB2F = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = scsi.h;
+			sourceTree = "<group>";
+		};
+		0F279EADD57BD6B87B7EE0FD = {
+			isa = PBXFileReference;
+			lastKnownFileType = text;
+			path = keytbl.inc;
+			sourceTree = "<group>";
+		};
+		0F9D536593C73F7E8A7B2C82 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = version.h;
+			sourceTree = "<group>";
+		};
+		1315D8074DC770152839EFFA = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = timer.c;
+			sourceTree = "<group>";
+		};
+		15B6E51D92768D10522E94C1 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = palette.h;
+			sourceTree = "<group>";
+		};
+		187005C24C91C44EE7D6ED18 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = IPLROM_DAT.c;
+			sourceTree = "<group>";
+		};
+		18CFBFED7ED69964CBBD4CF7 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = palette.c;
+			sourceTree = "<group>";
+		};
+		1ABA6C9B1E62412EE9915F49 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = fileio.h;
+			sourceTree = "<group>";
+		};
+		1DA173F7320AFF02F54A09A3 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = crtc_timing.h;
+			sourceTree = "<group>";
+		};
+		1F462BC443C29026463D3A21 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = dosio.h;
+			sourceTree = "<group>";
+		};
+		209D88CB37B2E3F65DC1F6D3 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = gvram.h;
+			sourceTree = "<group>";
+		};
+		246F438FCDBEE7578892BB33 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = GameScene.swift;
+			sourceTree = "<group>";
+		};
+		27AC83FF81E400C12CB98E04 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = m68000.h;
+			sourceTree = "<group>";
+		};
+		28ECB7E1C560B20B5AE2D091 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.cpp.cpp;
+			path = submcu.cpp;
+			sourceTree = "<group>";
+		};
+		293D5E6F4172A9F35A52A58F = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = peace.c;
+			sourceTree = "<group>";
+		};
+		2957AB3C95948850EBCEF0E3 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = windows.h;
+			sourceTree = "<group>";
+		};
+		2962C99D47693BB6DF3DA12C = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = ppi.h;
+			sourceTree = "<group>";
+		};
+		2B9856236D2B6288F08BFB70 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = fdc.h;
+			sourceTree = "<group>";
+		};
+		2C5CAC9B1DF3A4A7B3DAEDE9 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = common.c;
+			sourceTree = "<group>";
+		};
+		2D28EE57DC8BB728B96F8C87 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = disk_xdf.h;
+			sourceTree = "<group>";
+		};
+		2E6810022CC08D7CAFC14E30 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = dosio.c;
+			sourceTree = "<group>";
+		};
+		2E79DA81FF2955EFAAD698AE = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = SceneDelegate.swift;
+			sourceTree = "<group>";
+		};
+		2F60B909924805B94484C098 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = cdctrl.h;
+			sourceTree = "<group>";
+		};
+		31AE4D538EEA83F4D05C7754 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = dswin.c;
+			sourceTree = "<group>";
+		};
+		331E043C48680FB49CA53ED9 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = ioc.h;
+			sourceTree = "<group>";
+		};
+		36872841A5C9526C6F7F3CE1 = {
+			isa = PBXFileReference;
+			lastKnownFileType = file.storyboard;
+			name = Base;
+			path = Base.lproj/LaunchScreen.storyboard;
+			sourceTree = "<group>";
+		};
+		3C9A76FD37E50D7C6CEFA64D = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = pia.c;
+			sourceTree = "<group>";
+		};
+		3E851748A50D2AA8AB48FE79 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = pia.h;
+			sourceTree = "<group>";
+		};
+		3F871431B82D71706DAE62D0 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = peace.h;
+			sourceTree = "<group>";
+		};
+		3FCAB0F789A96C66CBBA87CF = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = AudioStream.swift;
+			sourceTree = "<group>";
+		};
+		491B3795CCA4F0F52C650DB4 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = diag.h;
+			sourceTree = "<group>";
+		};
+		4A910DC077A8EE96F99A90C4 = {
+			isa = PBXFileReference;
+			lastKnownFileType = image.png;
+			path = jSubstrate.png;
+			sourceTree = "<group>";
+		};
+		4ADA8E776F61E821A9C2A8A0 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = timer.h;
+			sourceTree = "<group>";
+		};
+		4DB6F4A520A95643FB2DCBDB = {
+			isa = PBXFileReference;
+			lastKnownFileType = image.png;
+			path = "jSubstrate@2x.png";
+			sourceTree = "<group>";
+		};
+		4F2C5B7E50EFBF5312B46E64 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.cpp.cpp;
+			path = fmgen.cpp;
+			sourceTree = "<group>";
+		};
+		512437EBD61226683A93EB93 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = fmg_wrap.h;
+			sourceTree = "<group>";
+		};
+		55421132A3AB0AF7881910A7 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = joystick.c;
+			sourceTree = "<group>";
+		};
+		5618998D74AE3E654062CB96 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = keyboard.h;
+			sourceTree = "<group>";
+		};
+		566BD4617AF87D008FAEB23A = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = X68MouseController.swift;
+			sourceTree = "<group>";
+		};
+		568C272F312F36D45CA1AE97 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.cpp.cpp;
+			path = opm.cpp;
+			sourceTree = "<group>";
+		};
+		57A48AEB4B28753B374FE15A = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = sasi.c;
+			sourceTree = "<group>";
+		};
+		597DEFDC29E720CDDE153C09 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = mouse.h;
+			sourceTree = "<group>";
+		};
+		616BC97289D47D8EF111832E = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = gvram.c;
+			sourceTree = "<group>";
+		};
+		61E72F86FA6243096B89F4A3 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = misc.h;
+			sourceTree = "<group>";
+		};
+		64E3E4A7DB031C4BF80314AC = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = SC55Synthesizer.swift;
+			sourceTree = "<group>";
+		};
+		64F80B22B6660579B22DB5F0 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = GameViewController.swift;
+			sourceTree = "<group>";
+		};
+		6728E1372165AF75EE9EE90A = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = midi.h;
+			sourceTree = "<group>";
+		};
+		68B3AA64932234708C2CD636 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = fake.c;
+			sourceTree = "<group>";
+		};
+		692C09CEA95F4C97C95A9697 = {
+			isa = PBXFileReference;
+			lastKnownFileType = text.plist.xml;
+			path = Info.plist;
+			sourceTree = "<group>";
+		};
+		6BC16188326D7552C03913F0 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = scrbuf.h;
+			sourceTree = "<group>";
+		};
+		6C79FC442B220B157A3FB2F6 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = JoyController.swift;
+			sourceTree = "<group>";
+		};
+		6D1DC6E85B3E9AFF6E293B43 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = disk_dim.h;
+			sourceTree = "<group>";
+		};
+		6D33866BFA55B6F4D09DB9A7 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = d68k.h;
+			sourceTree = "<group>";
+		};
+		6F0E41B5FB298E93E5146BDA = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = ConfigScene.swift;
+			sourceTree = "<group>";
+		};
+		7062696ADFB008E954E5F8B0 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = midi.c;
+			sourceTree = "<group>";
+		};
+		70ECB249AFAF741E06ADD764 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = tvram.h;
+			sourceTree = "<group>";
+		};
+		747958C25E3D33E0AC12E075 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = d68k.c;
+			sourceTree = "<group>";
+		};
+		7527E6D5EE82200D52C6F79F = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = AppDelegate.swift;
+			sourceTree = "<group>";
+		};
+		77598C03183347F4BE15C191 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = windraw.c;
+			sourceTree = "<group>";
+		};
+		77831A56B73A365E63888581 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = fmgen.h;
+			sourceTree = "<group>";
+		};
+		78718BE0F0FF1EAA3172522B = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = ppi_8255.h;
+			sourceTree = "<group>";
+		};
+		78BC124FFAA8F1EF8389AC21 = {
+			isa = PBXFileReference;
+			lastKnownFileType = file.sks;
+			path = ConfigScene.sks;
+			sourceTree = "<group>";
+		};
+		78C77D6172024721E9264F42 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = mem_wrap.c;
+			sourceTree = "<group>";
+		};
+		793D7A745D4606513EF7AE4F = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = adpcm.c;
+			sourceTree = "<group>";
+		};
+		7C045EDAE85DEE77A9C3EEFF = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = disk_dim.c;
+			sourceTree = "<group>";
+		};
+		7DA8E8BFA3C64265B405F6D5 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = headers.h;
+			sourceTree = "<group>";
+		};
+		7F2C67B8D692F1E47531E151 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.cpp.cpp;
+			path = fmg_wrap.cpp;
+			sourceTree = "<group>";
+		};
+		801B708F5AEF6137B50D1169 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.cpp.cpp;
+			path = winx68k.cpp;
+			sourceTree = "<group>";
+		};
+		8259C381D9D6C50DBE3F1A3A = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = crtc_timing.c;
+			sourceTree = "<group>";
+		};
+		84C189A296141A2F049234E8 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.cpp.cpp;
+			path = mcu_opcodes.cpp;
+			sourceTree = "<group>";
+		};
+		860E891CC93B623FACC02482 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = irqh.h;
+			sourceTree = "<group>";
+		};
+		8848D1A1D071113D724FB709 = {
+			isa = PBXFileReference;
+			lastKnownFileType = file.sks;
+			path = Actions.sks;
+			sourceTree = "<group>";
+		};
+		8C83E13FB89809C5F66DBB47 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = windraw.h;
+			sourceTree = "<group>";
+		};
+		8D7AC80DC85E8A644B68004A = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = keyboard.c;
+			sourceTree = "<group>";
+		};
+		91730AF8ACC0DBA055C1C44A = {
+			isa = PBXFileReference;
+			lastKnownFileType = file.sks;
+			path = GameScene.sks;
+			sourceTree = "<group>";
+		};
+		92DA8A833F54884D6979BB26 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = disk_d88.h;
+			sourceTree = "<group>";
+		};
+		931C5444135843F6482C9C31 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = crtc.c;
+			sourceTree = "<group>";
+		};
+		9ABA6E7F74423EA47B43B613 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = CRTFilterManager.swift;
+			sourceTree = "<group>";
+		};
+		9B00EA5F38C52CDB73B640FC = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = common.h;
+			sourceTree = "<group>";
+		};
+		9BFDBA6B03001102FE260CF3 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = appftype.h;
+			sourceTree = "<group>";
+		};
+		9D204B425700F71B8AD95D08 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = c68kexec.c;
+			sourceTree = "<group>";
+		};
+		9D7CB596D2F2E5673AB07902 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = fmtimer.h;
+			sourceTree = "<group>";
+		};
+		A0040D50C6205CEB75E0CD87 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = mfp.h;
+			sourceTree = "<group>";
+		};
+		A10251408214E1502A062B76 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = sysport.c;
+			sourceTree = "<group>";
+		};
+		A24D2B985C9E6826FFD5B7B8 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = prop.c;
+			sourceTree = "<group>";
+		};
+		A61D19B4CA01FDC87BC88E4B = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = tvram.c;
+			sourceTree = "<group>";
+		};
+		AB2F42E07145945C08CA5558 = {
+			isa = PBXFileReference;
+			lastKnownFileType = image.png;
+			path = HDDIcon.png;
+			sourceTree = "<group>";
+		};
+		ACFB235D7EB48FABFE51F174 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = fdc.c;
+			sourceTree = "<group>";
+		};
+		ADEB49D3451A4C2F2A51D975 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = crtc.h;
+			sourceTree = "<group>";
+		};
+		AE9602DE7AB476F355BD8C1F = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = status.h;
+			sourceTree = "<group>";
+		};
+		B0308BEB573B6229F9633029 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = irqh.c;
+			sourceTree = "<group>";
+		};
+		B191D9041044039FADF52E8F = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = joystick.h;
+			sourceTree = "<group>";
+		};
+		B30CB3DF0C5F8D494EB956DC = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.cpp.cpp;
+			path = mcu.cpp;
+			sourceTree = "<group>";
+		};
+		B534E3FE8F1EE54C3B50D526 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = sram.h;
+			sourceTree = "<group>";
+		};
+		B5D5686342513EC8E2AE9BD8 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = FileSystem.swift;
+			sourceTree = "<group>";
+		};
+		B663163B063A8D4C03FAD355 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = scc.h;
+			sourceTree = "<group>";
+		};
+		B78FA99BE2DB3E028FBDF75A = {
+			isa = PBXFileReference;
+			lastKnownFileType = folder.assetcatalog;
+			path = Assets.xcassets;
+			sourceTree = "<group>";
+		};
+		B8E385AE1022583DFEEA60DF = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = dmac.c;
+			sourceTree = "<group>";
+		};
+		BF01AEA5FE83B4BB8F9A2603 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = opm.h;
+			sourceTree = "<group>";
+		};
+		BF588A54B0B0AACA84DAAD19 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = CRTOverlay.swift;
+			sourceTree = "<group>";
+		};
+		BFAC03EA4DF35967BC69E8A0 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = dmac.h;
+			sourceTree = "<group>";
+		};
+		C5DBF8982C93664AED40497C = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = adpcm.h;
+			sourceTree = "<group>";
+		};
+		C76C1347F3B52E282BC3C9F6 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.cpp.cpp;
+			path = mcu_timer.cpp;
+			sourceTree = "<group>";
+		};
+		C80EAB7F1884F5A7FA5C4A36 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = cmdline.h;
+			sourceTree = "<group>";
+		};
+		C8793D181D939260583CDB59 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = SuperimposeManager.swift;
+			sourceTree = "<group>";
+		};
+		C88B516B5BEEC7496C6379F0 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = mfp.c;
+			sourceTree = "<group>";
+		};
+		CA3DD31AB993FF2CB8340E61 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = rtc.h;
+			sourceTree = "<group>";
+		};
+		CA77D933FD4BCAF54C30F675 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = cdaspi.h;
+			sourceTree = "<group>";
+		};
+		CD2541504BF4962D46B11567 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = mouse.c;
+			sourceTree = "<group>";
+		};
+		CD7517DBDE5E2B7AF7D64EC4 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = ppi.c;
+			sourceTree = "<group>";
+		};
+		CD91C49A716C5C628DC2DE03 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = mmsystem.h;
+			sourceTree = "<group>";
+		};
+		D0A4C5128F1193EDED7FC14D = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = fmgeninl.h;
+			sourceTree = "<group>";
+		};
+		D2217589FE67FDEED6AF2A4E = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = fdd.h;
+			sourceTree = "<group>";
+		};
+		D35DA4FBCC3A078BD35F38EC = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = sram.c;
+			sourceTree = "<group>";
+		};
+		D4A3AFB2C7978972D1D8D1E3 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = iOSKeyMap.swift;
+			sourceTree = "<group>";
+		};
+		D772D5786B4267FA116FAF29 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = scsi.c;
+			sourceTree = "<group>";
+		};
+		D7B3D08EE45DAA66A93A8936 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = X68ErrorHandling.swift;
+			sourceTree = "<group>";
+		};
+		D85D1BA2C2CD49826B597E1B = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = prop.h;
+			sourceTree = "<group>";
+		};
+		D9740F98CEFB791F52B9D784 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = d68kconf.h;
+			sourceTree = "<group>";
+		};
+		D99F19FBFE80A90B493F73DF = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = rtc.c;
+			sourceTree = "<group>";
+		};
+		D9A702B27C555F49A226C98D = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = dswin.h;
+			sourceTree = "<group>";
+		};
+		DA22DA4B73CDD030D7B9648E = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = c68k.c;
+			sourceTree = "<group>";
+		};
+		DCC7E87A18E1A6ADC5B5DFE4 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = winx68k.h;
+			sourceTree = "<group>";
+		};
+		DCEB573A8C67A795530DFF3B = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = CRTSettings.swift;
+			sourceTree = "<group>";
+		};
+		E0FAAB0FD5C55507C4373BBE = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = bg.h;
+			sourceTree = "<group>";
+		};
+		E438010B485D3CBC92056851 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = "X68000 macOS-Bridging-Header.h";
+			sourceTree = "<group>";
+		};
+		E66568208404347FA190E2D2 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = m68000.h;
+			sourceTree = "<group>";
+		};
+		E73411779E958E733ED82AD0 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = fdd.c;
+			sourceTree = "<group>";
+		};
+		EA0FE2142EE64DEFA184A865 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = disk_d88.c;
+			sourceTree = "<group>";
+		};
+		EA96441E4CB269080940A1B8 = {
+			isa = PBXFileReference;
+			lastKnownFileType = folder.assetcatalog;
+			path = Assets.xcassets;
+			sourceTree = "<group>";
+		};
+		EBBAFFBEB182C31137A78F3B = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = MIDIController.swift;
+			sourceTree = "<group>";
+		};
+		ECD52245CB989CDA3A7F725F = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = BenchMark.swift;
+			sourceTree = "<group>";
+		};
+		EDA35F88103A1AC07DA0C3D2 = {
+			isa = PBXFileReference;
+			lastKnownFileType = image.png;
+			path = "jStick@2x.png";
+			sourceTree = "<group>";
+		};
+		EE7901C6BC1F448F74A25D56 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = keyconf.h;
+			sourceTree = "<group>";
+		};
+		EF31016BE55688D043B851A5 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = bg.c;
+			sourceTree = "<group>";
+		};
+		EF835B02DFBE091B18C2F6F0 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = TAAnalogJoyStick.swift;
+			sourceTree = "<group>";
+		};
+		EFA6DAB2B57E5C1B700C2E7B = {
+			isa = PBXFileReference;
+			lastKnownFileType = "wrapper.plug-in";
+			path = Settings.bundle;
+			sourceTree = "<group>";
+		};
+		EFD341EC4A607388492ABC10 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = X68Device.swift;
+			sourceTree = "<group>";
+		};
+		F013AFD6823B46A4CD64E1BA = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = status.c;
+			sourceTree = "<group>";
+		};
+		F61A0A11937724D3EBB20162 = {
+			isa = PBXFileReference;
+			lastKnownFileType = image.png;
+			path = FDD.png;
+			sourceTree = "<group>";
+		};
+		F6DFF9CA0B26EEC59EBD8AA8 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = scrbuf.c;
+			sourceTree = "<group>";
+		};
+		F72DD8647ACC00538E12EC38 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = fmgen_types.h;
+			sourceTree = "<group>";
+		};
+		FB2387F00521C209044B82D1 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.c;
+			path = ioc.c;
+			sourceTree = "<group>";
+		};
+		FC1EECA7A2CE15BFDBEDDBD5 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = cdrom.h;
+			sourceTree = "<group>";
+		};
+		FC6393C86FDDD5234795F265 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = X68Security.swift;
+			sourceTree = "<group>";
+		};
+		FE593734E4FD7D835C039322 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.cpp.cpp;
+			path = mcu_interrupt.cpp;
+			sourceTree = "<group>";
+		};
+		FE9A29BD2F87108E29525162 = {
+			isa = PBXFileReference;
+			explicitFileType = wrapper.application;
+			includeInIndex = 0;
+			path = MPX68K.app;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		FF5AB6CCF5151B09ABD317E6 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = X68JoyCard.swift;
+			sourceTree = "<group>";
+		};
+		9D503FEA7326E26368038E95 = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		09721FEBB7504F8B1DCD44CE = {
+			isa = PBXGroup;
+			children = (
+				9BFDBA6B03001102FE260CF3,
+				2E6810022CC08D7CAFC14E30,
+				1F462BC443C29026463D3A21,
+				68B3AA64932234708C2CD636,
+				CD91C49A716C5C628DC2DE03,
+				293D5E6F4172A9F35A52A58F,
+				3F871431B82D71706DAE62D0,
+				2957AB3C95948850EBCEF0E3,
+			);
+			path = win32api;
+			sourceTree = "<group>";
+		};
+		0BE0A7CE87F8FCCDF41FD4AB = {
+			isa = PBXGroup;
+			children = (
+				A03E6BEB59CB89458ED40E9D,
+				7D5D612688FC1CA9156E4C0D,
+				EFA6DAB2B57E5C1B700C2E7B,
+				2ED75A21FCA994278A7BA195,
+			);
+			sourceTree = "<group>";
+		};
+		2B9D27A1A7E44A4819FCC8F6 = {
+			isa = PBXGroup;
+			children = (
+				CA77D933FD4BCAF54C30F675,
+				2F60B909924805B94484C098,
+				FC1EECA7A2CE15BFDBEDDBD5,
+				0853812E43CE949A6915310D,
+				C80EAB7F1884F5A7FA5C4A36,
+				31AE4D538EEA83F4D05C7754,
+				D9A702B27C555F49A226C98D,
+				1ABA6C9B1E62412EE9915F49,
+				187005C24C91C44EE7D6ED18,
+				55421132A3AB0AF7881910A7,
+				B191D9041044039FADF52E8F,
+				8D7AC80DC85E8A644B68004A,
+				5618998D74AE3E654062CB96,
+				EE7901C6BC1F448F74A25D56,
+				0F279EADD57BD6B87B7EE0FD,
+				0A049FD9CD97C3C1B5475E97,
+				CD2541504BF4962D46B11567,
+				597DEFDC29E720CDDE153C09,
+				A24D2B985C9E6826FFD5B7B8,
+				D85D1BA2C2CD49826B597E1B,
+				F6DFF9CA0B26EEC59EBD8AA8,
+				6BC16188326D7552C03913F0,
+				F013AFD6823B46A4CD64E1BA,
+				AE9602DE7AB476F355BD8C1F,
+				1315D8074DC770152839EFFA,
+				4ADA8E776F61E821A9C2A8A0,
+				0F9D536593C73F7E8A7B2C82,
+				77598C03183347F4BE15C191,
+				8C83E13FB89809C5F66DBB47,
+				801B708F5AEF6137B50D1169,
+				DCC7E87A18E1A6ADC5B5DFE4,
+			);
+			path = x11;
+			sourceTree = "<group>";
+		};
+		2ED75A21FCA994278A7BA195 = {
+			isa = PBXGroup;
+			children = (
+				FE9A29BD2F87108E29525162,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		3218691282F250254F301C43 = {
+			isa = PBXGroup;
+			children = (
+				B30CB3DF0C5F8D494EB956DC,
+				FE593734E4FD7D835C039322,
+				84C189A296141A2F049234E8,
+				C76C1347F3B52E282BC3C9F6,
+				060828FBD7B6E3919DF4092C,
+				28ECB7E1C560B20B5AE2D091,
+			);
+			path = core;
+			sourceTree = "<group>";
+		};
+		3279966814B952D87D1D3F41 = {
+			isa = PBXGroup;
+			children = (
+				491B3795CCA4F0F52C650DB4,
+				7F2C67B8D692F1E47531E151,
+				512437EBD61226683A93EB93,
+				4F2C5B7E50EFBF5312B46E64,
+				77831A56B73A365E63888581,
+				F72DD8647ACC00538E12EC38,
+				D0A4C5128F1193EDED7FC14D,
+				002AEEDA20B5D396D5439790,
+				9D7CB596D2F2E5673AB07902,
+				7DA8E8BFA3C64265B405F6D5,
+				61E72F86FA6243096B89F4A3,
+				568C272F312F36D45CA1AE97,
+				BF01AEA5FE83B4BB8F9A2603,
+				E438010B485D3CBC92056851,
+			);
+			path = fmgen;
+			sourceTree = "<group>";
+		};
+		5E97E0A301594F5D95C72221 = {
+			isa = PBXGroup;
+			children = (
+				DA22DA4B73CDD030D7B9648E,
+				9D204B425700F71B8AD95D08,
+			);
+			path = c68k;
+			sourceTree = "<group>";
+		};
+		605F154EF338AC912D401CCB = {
+			isa = PBXGroup;
+			children = (
+				5E97E0A301594F5D95C72221,
+				2C5CAC9B1DF3A4A7B3DAEDE9,
+				9B00EA5F38C52CDB73B640FC,
+				00CCCFFB51A2D58CB9514F79,
+				27AC83FF81E400C12CB98E04,
+			);
+			path = m68000;
+			sourceTree = "<group>";
+		};
+		608CA772DA42841872AC2339 = {
+			isa = PBXGroup;
+			children = (
+				C8793D181D939260583CDB59,
+			);
+			path = Superimpose;
+			sourceTree = "<group>";
+		};
+		6812BEDCDAD52E440A53930F = {
+			isa = PBXGroup;
+			children = (
+				9ABA6E7F74423EA47B43B613,
+				BF588A54B0B0AACA84DAAD19,
+				DCEB573A8C67A795530DFF3B,
+			);
+			path = CRT;
+			sourceTree = "<group>";
+		};
+		76D4335472FC866B11F6034C = {
+			isa = PBXGroup;
+			children = (
+				3218691282F250254F301C43,
+				64E3E4A7DB031C4BF80314AC,
+			);
+			path = SC55;
+			sourceTree = "<group>";
+		};
+		7D5D612688FC1CA9156E4C0D = {
+			isa = PBXGroup;
+			children = (
+				6812BEDCDAD52E440A53930F,
+				B30EF8B0D7495298C6990F2D,
+				76D4335472FC866B11F6034C,
+				608CA772DA42841872AC2339,
+				8848D1A1D071113D724FB709,
+				EA96441E4CB269080940A1B8,
+				3FCAB0F789A96C66CBBA87CF,
+				ECD52245CB989CDA3A7F725F,
+				78BC124FFAA8F1EF8389AC21,
+				6F0E41B5FB298E93E5146BDA,
+				B5D5686342513EC8E2AE9BD8,
+				91730AF8ACC0DBA055C1C44A,
+				246F438FCDBEE7578892BB33,
+				6C79FC442B220B157A3FB2F6,
+				EBBAFFBEB182C31137A78F3B,
+				EF835B02DFBE091B18C2F6F0,
+				EFD341EC4A607388492ABC10,
+				D7B3D08EE45DAA66A93A8936,
+				FF5AB6CCF5151B09ABD317E6,
+				098A1AD61710F8946A2DE3EA,
+				566BD4617AF87D008FAEB23A,
+				FC6393C86FDDD5234795F265,
+			);
+			path = "X68000 Shared";
+			sourceTree = "<group>";
+		};
+		97789514BD5B894EAF582C01 = {
+			isa = PBXGroup;
+			children = (
+				793D7A745D4606513EF7AE4F,
+				C5DBF8982C93664AED40497C,
+				EF31016BE55688D043B851A5,
+				E0FAAB0FD5C55507C4373BBE,
+				931C5444135843F6482C9C31,
+				ADEB49D3451A4C2F2A51D975,
+				8259C381D9D6C50DBE3F1A3A,
+				1DA173F7320AFF02F54A09A3,
+				747958C25E3D33E0AC12E075,
+				6D33866BFA55B6F4D09DB9A7,
+				D9740F98CEFB791F52B9D784,
+				EA0FE2142EE64DEFA184A865,
+				92DA8A833F54884D6979BB26,
+				7C045EDAE85DEE77A9C3EEFF,
+				6D1DC6E85B3E9AFF6E293B43,
+				0CB22166ABDC8DD62BD144C2,
+				2D28EE57DC8BB728B96F8C87,
+				B8E385AE1022583DFEEA60DF,
+				BFAC03EA4DF35967BC69E8A0,
+				ACFB235D7EB48FABFE51F174,
+				2B9856236D2B6288F08BFB70,
+				E73411779E958E733ED82AD0,
+				D2217589FE67FDEED6AF2A4E,
+				616BC97289D47D8EF111832E,
+				209D88CB37B2E3F65DC1F6D3,
+				FB2387F00521C209044B82D1,
+				331E043C48680FB49CA53ED9,
+				B0308BEB573B6229F9633029,
+				860E891CC93B623FACC02482,
+				E66568208404347FA190E2D2,
+				78C77D6172024721E9264F42,
+				C88B516B5BEEC7496C6379F0,
+				A0040D50C6205CEB75E0CD87,
+				7062696ADFB008E954E5F8B0,
+				6728E1372165AF75EE9EE90A,
+				18CFBFED7ED69964CBBD4CF7,
+				15B6E51D92768D10522E94C1,
+				3C9A76FD37E50D7C6CEFA64D,
+				3E851748A50D2AA8AB48FE79,
+				CD7517DBDE5E2B7AF7D64EC4,
+				2962C99D47693BB6DF3DA12C,
+				78718BE0F0FF1EAA3172522B,
+				D99F19FBFE80A90B493F73DF,
+				CA3DD31AB993FF2CB8340E61,
+				57A48AEB4B28753B374FE15A,
+				07BB062655214784F1A726A0,
+				00D82B8D72D3F2872A895454,
+				B663163B063A8D4C03FAD355,
+				D772D5786B4267FA116FAF29,
+				0CDCA340D6F6B859AA5DDB2F,
+				D35DA4FBCC3A078BD35F38EC,
+				B534E3FE8F1EE54C3B50D526,
+				A10251408214E1502A062B76,
+				0C6EB6B3793893B5A734F51C,
+				A61D19B4CA01FDC87BC88E4B,
+				70ECB249AFAF741E06ADD764,
+			);
+			path = x68k;
+			sourceTree = "<group>";
+		};
+		A03E6BEB59CB89458ED40E9D = {
+			isa = PBXGroup;
+			children = (
+				7527E6D5EE82200D52C6F79F,
+				B78FA99BE2DB3E028FBDF75A,
+				64F80B22B6660579B22DB5F0,
+				692C09CEA95F4C97C95A9697,
+				D4A3AFB2C7978972D1D8D1E3,
+				179FC47979A76904F7B9FA80,
+				2E79DA81FF2955EFAAD698AE,
+			);
+			path = "X68000 iOS";
+			sourceTree = "<group>";
+		};
+		B30EF8B0D7495298C6990F2D = {
+			isa = PBXGroup;
+			children = (
+				3279966814B952D87D1D3F41,
+				605F154EF338AC912D401CCB,
+				09721FEBB7504F8B1DCD44CE,
+				2B9D27A1A7E44A4819FCC8F6,
+				97789514BD5B894EAF582C01,
+				F61A0A11937724D3EBB20162,
+				AB2F42E07145945C08CA5558,
+				001EC76C0B41AB85B0377472,
+				EDA35F88103A1AC07DA0C3D2,
+				4A910DC077A8EE96F99A90C4,
+				4DB6F4A520A95643FB2DCBDB,
+			);
+			path = px68k;
+			sourceTree = "<group>";
+		};
+		EBB1316442ED41D4A89915F8 = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C02C5A15F2EDAD87E05F10EA;
+			buildPhases = (
+				AD573BE8541F06BE3F814897,
+				9D503FEA7326E26368038E95,
+				4CFEAC9F2A1C3865A9701EDA,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "MPX68K iOS";
+			productName = "MPX68K iOS";
+			productReference = FE9A29BD2F87108E29525162;
+			productType = "com.apple.product-type.application";
+		};
+		46F86FAA6BBF9AC94A7E4595 = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+				ORGANIZATIONNAME = NANKIN;
+			};
+			buildConfigurationList = 611023CE13C29804FAFF3238;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 0BE0A7CE87F8FCCDF41FD4AB;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 2ED75A21FCA994278A7BA195;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				EBB1316442ED41D4A89915F8,
+			);
+		};
+		4CFEAC9F2A1C3865A9701EDA = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BD5B79DFEE0D042A267DA8B7,
+				37CBC7051FA924728CDDAA1F,
+				607F8F56259C5DCBEDCFF9B3,
+				038AA36A206D613F5C0FE002,
+				FF005FD9D32BE59F182CAAFA,
+				B67ED45E1D74E48923666D8A,
+				1299BD1B18F42979486152A1,
+				44003741F7A34140FF6B1CB4,
+				27363AF3B81C04E24A86B851,
+				5B84404B037761FA96A6E70C,
+				5A33BC9C6411C507410022D0,
+				1DD0C6D3D2CC4BFB53F61BF8,
+				A5F924FD3391FEB18955CD65,
+				75356C875811E7345CBFFB1D,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AD573BE8541F06BE3F814897 = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D4F6064533E761B673FF4C80,
+				6656AD1EB21FB620DC27E493,
+				66E208D34AC0A39B3652FB5A,
+				ABA55A612F7D844B15E12D27,
+				6AE69A556A4AA5F49CDD93F6,
+				459BDC75B07EEB7603A92594,
+				839D49CB887ED9E72C4039CE,
+				F05CA80E045B91815EF44A09,
+				D366539480F8DE26FEC08EBF,
+				A2CDAB11B546120842C94160,
+				DB42D20B97DA64BBD630E8DF,
+				8CDB4C77F8D7DAF9E282CBA0,
+				2EC8476A013C7716ACC04DB2,
+				48697D4C5AD6105649520614,
+				30E78B924A8ED6E0626CD2C0,
+				B12CF5CCAEDFD62C7F663A66,
+				4AD10C8153128D775A5822F5,
+				FD8E7DA2177E118968B7DE71,
+				788DFAA1CDB351DC97AAEE38,
+				A00854CD02F9E4C86058D07C,
+				DC853E08BC125094C89CDCC3,
+				D3BA68714F2B0479E217B95A,
+				215FBB6D8D3CFB6BC7C4CC69,
+				1407AFA263FC3540F3147717,
+				39D1EC48DB0A8D34ECBA974C,
+				C09FD26DF8360DFD78B05ADB,
+				885C7A6B633F18B69AEB8CBF,
+				721B3E551294EB286D6F408E,
+				13269D1CB1EBBC5A590E0CE3,
+				C1B8CBD648535D117908C4EE,
+				BFDB687F7EF0D636BE67ED38,
+				4B0D8AB211F6ECED2ECAD38A,
+				0B801A555AAB186A490DD854,
+				F2A9D3E9B3A32C027245AFBA,
+				3E982E8AE677EDBB7760753B,
+				8ABA7FFF64C3BC156E748D2A,
+				29C9A7C31971EF52794E6A41,
+				7CD27E0368D3CF33F6BFF860,
+				7EF7CBA16AEB81C008B3B2FF,
+				97A8E4B9A7B46270BED675AE,
+				C5B8B6D63C19B6470031DBC0,
+				A4D775F9C440A5E430B93B73,
+				E7713ED133DE23D36E7DBF2B,
+				2930F7AE74F62130A1725179,
+				F1B177CAB38397EEE3D8409E,
+				118008E154E85B45F1CD68A5,
+				038F4DD6BA6BB43AAE80E006,
+				4AE26866BBBA399C605CF6B0,
+				4A20CCB41B3873252A661607,
+				CD416A9254226B7C35BF9A6D,
+				65DACDDE3DFB0358C39DD790,
+				F00BB7AD55359581E16C964B,
+				ABCA049909B97E7752C90DF5,
+				792D17177A270D2E26E40631,
+				8662D3D6C2BC8F9EF5D9FAB7,
+				1368B374AA0F4C1F68A465FA,
+				4E4CF801654DCDF33BB17197,
+				98025E03140DD9207DBE430F,
+				A32842F8C0F7FBB963FB8AB5,
+				C56B534F6AB2F7EE2CEF4BC5,
+				F4F21902C2AFFBD91DABEFBA,
+				129BD8653116EEAB6784AEE0,
+				E80D6C043E0C507AC5200B8C,
+				48697545D85D07C68FD4468E,
+				BAF5A488A4E117B4507986F9,
+				93FD7C5F9FC45ADFBB30EE2B,
+				14526DB5D4B824FAB14414B1,
+				11970791008FA2E3BECD8EBA,
+				3CBA026A00B17E413EF69654,
+				972B1008A7301F7AF0CE8F72,
+				EACE5FFB6CEBCDCCA93048E4,
+				E8B9CB3C2FC6C85EED4A0CEC,
+				E70EA787791DE068AA59FEBE,
+				114311122F2B759CF619434D,
+				3E347667A504EE5EC3DCB8A9,
+				1156D335ADDCFE166FA410F2,
+				52E07A379191F17D2D4B6532,
+				7782D34793FDDCA1F0711821,
+				01F8ED944C41A6499DD19C29,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		179FC47979A76904F7B9FA80 = {
+			isa = PBXVariantGroup;
+			children = (
+				36872841A5C9526C6F7F3CE1,
+			);
+			name = LaunchScreen.storyboard;
+			sourceTree = "<group>";
+		};
+		667222DEA451ABE085FA983D = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon-iOS";
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DQR9HH7KUY;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+					HAVE_C68K,
+					C68K_NO_JUMP_TABLE,
+					TARGET_IOS,
+				);
+				INFOPLIST_FILE = "X68000 iOS/Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "NANKIN.MPX68K-iOS";
+				PRODUCT_MODULE_NAME = X68000;
+				PRODUCT_NAME = MPX68K;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_OBJC_BRIDGING_HEADER = "X68000 Shared/px68k/fmgen/X68000 macOS-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Debug;
+		};
+		68651BD85848B05B6F575F1B = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		7835752C375CA7AE376C1BE8 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon-iOS";
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DQR9HH7KUY;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					HAVE_C68K,
+					C68K_NO_JUMP_TABLE,
+					TARGET_IOS,
+				);
+				INFOPLIST_FILE = "X68000 iOS/Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "NANKIN.MPX68K-iOS";
+				PRODUCT_MODULE_NAME = X68000;
+				PRODUCT_NAME = MPX68K;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_OBJC_BRIDGING_HEADER = "X68000 Shared/px68k/fmgen/X68000 macOS-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Release;
+		};
+		A51F4AB65C98D0BA266B61E6 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		611023CE13C29804FAFF3238 = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A51F4AB65C98D0BA266B61E6,
+				68651BD85848B05B6F575F1B,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C02C5A15F2EDAD87E05F10EA = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				667222DEA451ABE085FA983D,
+				7835752C375CA7AE376C1BE8,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+	};
+	rootObject = 46F86FAA6BBF9AC94A7E4595;
+}

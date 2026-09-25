@@ -292,7 +292,7 @@ class GameScene: SKScene {
         
         // Direct HDD loading to avoid complex FileSystem routing that may fail in TestFlight
         let extname = url.pathExtension.lowercased()
-        let bookmarkData = try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
+        let bookmarkData = try? url.bookmarkData(options: .x68SecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
         
         // Check if this is a valid HDD file
         let allowedExtensions: Set<String> = ["hdf", "hdm", "hds"]
@@ -928,16 +928,11 @@ class GameScene: SKScene {
                 vc.showROMInvalidAlert(error: error)
             }
 #elseif os(iOS)
-            if let window = UIApplication.shared.windows.first,
-               let vc = window.rootViewController {
-                let alert = UIAlertController(
-                    title: "ROM ファイルエラー",
-                    message: error.localizedDescription ?? "不明なエラーが発生しました。",
-                    preferredStyle: .alert
-                )
-                alert.addAction(UIAlertAction(title: "OK", style: .default))
-                vc.present(alert, animated: true)
+            var message = error.localizedDescription ?? "不明なエラーが発生しました。"
+            if case .missingFile = error {
+                message += "\n\n「ファイル」アプリの「このiPhone内」→「MPX68K for iOS」→「MPX68K」フォルダに置いてから、アプリを再起動してください。"
             }
+            GameScene.presentAlertWhenActive(title: "ROM ファイルエラー", message: message)
 #endif
         }
     }
@@ -1126,6 +1121,32 @@ class GameScene: SKScene {
     }
     
     #if os(iOS)
+    /// エミュレータ初期化はシーンのアクティブ化より先に走るため、表示先ができるまで待つ。
+    private static func presentAlertWhenActive(title: String, message: String) {
+        func activeRootViewController() -> UIViewController? {
+            UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .first { $0.activationState == .foregroundActive }?
+                .keyWindow?.rootViewController
+        }
+        func present(on viewController: UIViewController) {
+            let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            viewController.present(alert, animated: true)
+        }
+
+        if let viewController = activeRootViewController() {
+            present(on: viewController)
+            return
+        }
+        var observer: NSObjectProtocol?
+        observer = NotificationCenter.default.addObserver(forName: UIScene.didActivateNotification, object: nil, queue: .main) { _ in
+            guard let viewController = activeRootViewController() else { return }
+            if let observer { NotificationCenter.default.removeObserver(observer) }
+            present(on: viewController)
+        }
+    }
+
     @objc func hovering(_ sender: UIHoverGestureRecognizer) {
         debugLog("hovering: \(sender.state.rawValue)", category: .input)
         if #available(iOS 13.4, *) {

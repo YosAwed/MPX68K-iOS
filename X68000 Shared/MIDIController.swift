@@ -8,7 +8,9 @@
 
 import Foundation
 import CoreMIDI
+#if os(macOS)
 import AppKit
+#endif
 
 /// A UInt8 array, usually 3 bytes long
 public typealias MidiEvent = [UInt8]
@@ -63,7 +65,7 @@ class MIDIController {
             let bookmark: Data
             let scoped: Bool
             do {
-                bookmark = try folder.bookmarkData(options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
+                bookmark = try folder.bookmarkData(options: .x68ReadOnlySecurityScope,
                                                    includingResourceValuesForKeys: nil, relativeTo: nil)
                 scoped = true
             } catch {
@@ -112,7 +114,7 @@ class MIDIController {
         do {
             var stale = false
             let scoped = UserDefaults.standard.object(forKey: sc55BookmarkScopedKey) as? Bool ?? true
-            let folder = try URL(resolvingBookmarkData: bookmark, options: scoped ? [.withSecurityScope] : [],
+            let folder = try URL(resolvingBookmarkData: bookmark, options: scoped ? .x68SecurityScope : [],
                                  relativeTo: nil, bookmarkDataIsStale: &stale)
             // configureSC55 refreshes the bookmark after validating and loading the files.
             configureSC55(folder: folder, completion: completion)
@@ -137,10 +139,12 @@ class MIDIController {
 
     private func reportSC55Error(_ error: Error) {
         errorLog("SC-55: \(error.localizedDescription)", category: .audio)
+        #if os(macOS)
         let alert = NSAlert()
         alert.messageText = "SC-55 Internal MIDI"
         alert.informativeText = error.localizedDescription + "\nSystem → MIDI Output から設定を確認してください。"
         alert.runModal()
+        #endif
     }
     var clientRef:   MIDIClientRef = 0
     var inPortRef:   MIDIPortRef = 0

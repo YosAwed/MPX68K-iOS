@@ -19,12 +19,16 @@
 #include <sys/termios.h>
 #include <pthread.h>
 #include <os/log.h>
+#include <TargetConditionals.h>
+// JoyportU USB detection needs IOKit USB/serial, which exists only on macOS.
+#if TARGET_OS_OSX
 #include <IOKit/IOKitLib.h>
+#include <IOKit/usb/IOUSBLib.h>
+#include <IOKit/serial/IOSerialKeys.h>
+#endif
 
 // External function declaration
 extern void X68000_Joystick_Set(BYTE num, BYTE data);
-#include <IOKit/usb/IOUSBLib.h>
-#include <IOKit/serial/IOSerialKeys.h>
 
 // JoyportU mode configuration
 int joyport_ukun_mode = 0;  // 0: disabled, 1: notify mode, 2: command mode
@@ -78,6 +82,9 @@ static os_log_t JoyportULog(void)
 //---------------------------------------------------------------------------
 static char* FindJoyportUDevice(void)
 {
+#if !TARGET_OS_OSX
+    return NULL;
+#else
     CFMutableDictionaryRef matchDict = IOServiceMatching(kIOUSBDeviceClassName);
     if (!matchDict) return NULL;
     
@@ -120,6 +127,7 @@ static char* FindJoyportUDevice(void)
     }
     IOObjectRelease(iterator);
     return devicePath;
+#endif
 }
 
 //---------------------------------------------------------------------------

@@ -23,7 +23,17 @@
 #include	<string.h>
 #include	<limits.h>
 
-#ifdef __APPLE__
+#if defined(__APPLE__)
+#include	<TargetConditionals.h>
+#endif
+// SCSI-U (USB bridge) needs IOKit USB/serial, which exists only on macOS.
+#if defined(__APPLE__) && TARGET_OS_OSX
+#define	MPX68K_HAVE_IOKIT_USB	1
+#else
+#define	MPX68K_HAVE_IOKIT_USB	0
+#endif
+
+#if MPX68K_HAVE_IOKIT_USB
 #include	<unistd.h>
 #include	<fcntl.h>
 #include	<errno.h>
@@ -59,7 +69,7 @@ static DWORD s_last_iocs_sig_a1 = 0;
 static int s_scsi_log_total = 0;        // global log line counter
 #define SCSI_LOG_LIMIT 50000             // stop logging after this many lines
 
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 #define SCSIU_VENDOR_ID  0x04d8
 #define SCSIU_PRODUCT_ID 0xE6B2
 #define SCSIU_MAX_PORTS  8
@@ -94,7 +104,7 @@ static SCSIU_BridgeState s_scsi_u_bridge = {
 // Forward declarations
 void SCSI_LogText(const char* text);
 
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 static void SCSIU_SetStatusLocked(const char* fmt, ...);
 static int SCSIU_FindCandidatePorts(char paths[SCSIU_MAX_PORTS][SCSIU_PATH_LEN], int maxPorts);
 static int SCSIU_OpenPort(const char* path);
@@ -194,7 +204,7 @@ static void SCSI_NormalizeRootShortNames(DWORD bufAddr, DWORD startSec,
                                          DWORD count, DWORD secSize);
 static void SCSI_LogKernelQueueState(const char* tag);
 
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 static void
 SCSIU_SetStatusLocked(const char* fmt, ...)
 {
@@ -389,7 +399,7 @@ SCSIU_InterruptThread(void* arg)
 int
 SCSIU_InitBridge(void)
 {
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 	char paths[SCSIU_MAX_PORTS][SCSIU_PATH_LEN];
 	int portCount;
 	int i;
@@ -490,7 +500,7 @@ SCSIU_InitBridge(void)
 void
 SCSIU_StopBridge(void)
 {
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 	int controlFd;
 	int interruptFd;
 	pthread_t thread;
@@ -528,7 +538,7 @@ SCSIU_StopBridge(void)
 int
 SCSIU_IsConnected(void)
 {
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 	int connected;
 
 	pthread_mutex_lock(&s_scsi_u_bridge.mutex);
@@ -543,7 +553,7 @@ SCSIU_IsConnected(void)
 const char*
 SCSIU_GetStatus(void)
 {
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 	return s_scsi_u_bridge.status;
 #else
 	return "Unavailable on this platform";
@@ -557,7 +567,7 @@ SCSIU_GetStatus(void)
 //    書込み: cmd|0x80 バイトを送信 → val バイトを送信
 //    DREG-EX (0x41): 0x41 を送信 → 2バイト length → length バイトのデータ
 // ---------------------------------------------------------------------------------------
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 
 /* SPC レジスタ読出し。タイムアウト時は 0xFF を返す。 */
 static BYTE
@@ -1126,6 +1136,12 @@ SCSIU_ReadCapacity(DWORD* outLastLBA, DWORD* outBlockSize)
 	return 1;
 }
 
+#else /* !MPX68K_HAVE_IOKIT_USB */
+
+// SCSI-U is unavailable; storage bus mode 2 is never selected.
+static void SCSIU_ResetBootCache(void) {}
+static DWORD SCSIU_GetBlockSize(void) { return 512; }
+
 #endif /* __APPLE__ */
 
 /* ---------------------------------------------------------------------------------------
@@ -1135,7 +1151,7 @@ SCSIU_ReadCapacity(DWORD* outLastLBA, DWORD* outBlockSize)
 static BYTE*
 SCSI_ImgBuf(void)
 {
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 	if (X68000_GetStorageBusMode() == 2) {
 		return s_scsiu_boot_cache;
 	}
@@ -1146,7 +1162,7 @@ SCSI_ImgBuf(void)
 static long
 SCSI_ImgSize(void)
 {
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 	if (X68000_GetStorageBusMode() == 2) {
 		return s_scsiu_boot_cache_size;
 	}
@@ -1450,7 +1466,7 @@ void SCSI_InvalidateTransferCache(void)
 
 static SCSI_LOGFN_ATTR void SCSI_GetLogPath(char* outPath, size_t outSize)
 {
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 	const char* home = getenv("HOME");
 	if (home && home[0] != '\0') {
 		snprintf(outPath, outSize, "%s/Documents/MPX68K/_scsi_iocs.txt", home);
@@ -1462,7 +1478,7 @@ static SCSI_LOGFN_ATTR void SCSI_GetLogPath(char* outPath, size_t outSize)
 
 static SCSI_LOGFN_ATTR FILE* SCSI_OpenMirrorLog(const char* mode)
 {
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 	return fopen("/tmp/mpx68k_scsi_iocs.txt", mode);
 #else
 	(void)mode;
@@ -1472,7 +1488,7 @@ static SCSI_LOGFN_ATTR FILE* SCSI_OpenMirrorLog(const char* mode)
 
 static SCSI_LOGFN_ATTR void SCSI_EnsureLogDir(void)
 {
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 	const char* home = getenv("HOME");
 	if (home && home[0] != '\0') {
 		char dirPath[512];
@@ -2086,7 +2102,7 @@ static void SCSI_HandleBoot(void)
 
 	printf("SCSI_HandleBoot: Attempting SCSI boot...\n");
 
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 	if (X68000_GetStorageBusMode() == 2) {
 		/* SCSI-U モード: 物理 HDD の先頭を USB 経由で読み込む */
 		if (!SCSIU_EnsureBootCache()) {
@@ -2280,7 +2296,7 @@ void SCSI_InjectBoot(void)
 	SCSI_LogText("SCSI_INJECT_BOOT: IPL ROM init complete, injecting SCSI boot");
 	printf("SCSI_InjectBoot: IPL ROM init complete, injecting SCSI boot...\n");
 
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 	if (X68000_GetStorageBusMode() == 2) {
 		/* SCSI-U モード: ブートキャッシュをロード */
 		if (!SCSIU_EnsureBootCache()) {
@@ -2671,7 +2687,7 @@ static void SCSI_HandleIOCS(BYTE cmd)
 		}
 
 		if (X68000_GetStorageBusMode() == 2) {
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 			BYTE* tmpRd = (BYTE*)malloc(transferBytes);
 			if (tmpRd == NULL || !SCSIU_ReadBlocks(lba, blocks, blockSize, tmpRd)) {
 				free(tmpRd);
@@ -2821,7 +2837,7 @@ static void SCSI_HandleIOCS(BYTE cmd)
 		}
 
 		if (X68000_GetStorageBusMode() == 2) {
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 			BYTE* tmpWr = (BYTE*)malloc(transferBytes);
 			if (tmpWr == NULL) {
 				result = 0xFFFFFFFF;
@@ -2898,7 +2914,7 @@ static void SCSI_HandleIOCS(BYTE cmd)
 			break;
 		}
 		if (X68000_GetStorageBusMode() == 2) {
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 			BYTE* tmpRd2 = (BYTE*)malloc(transferBytes);
 			if (tmpRd2 == NULL || !SCSIU_ReadBlocks(lba, blocks, blockSize, tmpRd2)) {
 				free(tmpRd2);
@@ -2978,7 +2994,7 @@ static void SCSI_HandleIOCS(BYTE cmd)
 		DWORD totalBlocks;
 
 		if (X68000_GetStorageBusMode() == 2) {
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 			DWORD lastLBA = 0;
 			if (!SCSIU_IsConnected()) {
 				result = 0xFFFFFFFF;
@@ -3242,7 +3258,7 @@ static void SCSI_HandleIOCS(BYTE cmd)
 				DWORD copyLen = fullByteLen;
 				DWORD ri;
 				if (xferLen < copyLen) copyLen = xferLen;
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 				if (X68000_GetStorageBusMode() == 2) {
 					BYTE* tmpR6 = (BYTE*)malloc(fullByteLen);
 					if (tmpR6 && SCSIU_ReadBlocks(lba, blocks, blockSize, tmpR6)) {
@@ -3280,7 +3296,7 @@ static void SCSI_HandleIOCS(BYTE cmd)
 				DWORD copyLen = fullByteLen;
 				DWORD ri;
 				if (xferLen < copyLen) copyLen = xferLen;
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 				if (X68000_GetStorageBusMode() == 2) {
 					BYTE* tmpR10 = (BYTE*)malloc(fullByteLen);
 					if (tmpR10 && blocks > 0 && SCSIU_ReadBlocks(lba, blocks, blockSize, tmpR10)) {
@@ -3327,7 +3343,7 @@ static void SCSI_HandleIOCS(BYTE cmd)
 				DWORD totalBlocks = 0;
 				DWORD capBlockSize = (X68000_GetStorageBusMode() == 2) ? SCSIU_GetBlockSize() : 512;
 				BYTE cap[8];
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 				if (X68000_GetStorageBusMode() == 2) {
 					DWORD lastLBA = 0;
 					SCSIU_ReadCapacity(&lastLBA, &capBlockSize);
@@ -3423,7 +3439,7 @@ static void SCSI_HandleIOCS(BYTE cmd)
 				byteOff = lba * blockSize;
 				byteLen = blocks * blockSize;
 				if (xferLen < byteLen) byteLen = xferLen;
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 				if (X68000_GetStorageBusMode() == 2) {
 					BYTE* tmpW = NULL;
 					DWORD writeBlocks = 0;
@@ -5029,7 +5045,7 @@ static void SCSI_HandleDeviceCommand(void)
 			SCSI_LogText("SCSI_DEV READ error (no image)");
 			break;
 		}
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 		/* SCSI-U モード: 物理 HDD から直接ブロック読み出し */
 		if (X68000_GetStorageBusMode() == 2) {
 			if (!SCSI_IsLinearRamRange(bufAddr, (DWORD)byteCount)) {
@@ -5495,7 +5511,7 @@ static void SCSI_HandleDeviceCommand(void)
 			SCSI_SetReqStatus(reqpkt, 0, 0x02);
 			break;
 		}
-#ifdef __APPLE__
+#if MPX68K_HAVE_IOKIT_USB
 		/* SCSI-U モード: 物理 HDD へ直接ブロック書き込み */
 		if (X68000_GetStorageBusMode() == 2) {
 			DWORD physLBA  = (DWORD)(byteOffset / secSize);

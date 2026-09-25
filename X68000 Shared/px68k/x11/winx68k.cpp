@@ -1081,9 +1081,7 @@ void WinX68k_Exec(const long clockMHz, const long vsync)
 int original_main(int argc, const char *argv[], const long samplingrate )
 {
 #ifdef TARGET_IOS
-    extern const unsigned char X68000_for_iOSVersionString[];
-    extern const double X68000_for_iOSVersionNumber;
-    p6logd("PX68K Ver.%s -- %s Build:%d\n", PX68KVERSTR,X68000_for_iOSVersionString, int(X68000_for_iOSVersionNumber));
+    p6logd("PX68K Ver.%s -- iOS Build\n", PX68KVERSTR);
 #else
     p6logd("PX68K Ver.%s -- macOS Build\n", PX68KVERSTR);
 #endif

@@ -10,7 +10,12 @@ MPX68K（macOS 版）をベースに、iOS / iPadOS 版「MPX68K for iOS」を�
 - エミュレーションコア（`X68000 Shared/px68k`、`SC55/core`、`c68k`）は upstream と共通に保ち、
   iOS 固有の変更は `#if os(iOS)` / `TARGET_OS_IOS` で分離して `git merge upstream/master` を容易にする。
 - iOS ターゲットは MPX68K の `68a0c0c`（`f2ba723` で削除される直前）に存在した
-  `X68000 iOS/` を出発点として復元する。
+  `X68000 iOS/` を出発点として復元した。
+- iOS 用プロジェクト `MPX68K iOS.xcodeproj` は `tools/generate_ios_project.py` が
+  macOS プロジェクト（`X68000.xcodeproj`）のビルド対象から生成する。upstream マージ後は再生成する:
+  `python3 tools/generate_ios_project.py`（`X68000.xcodeproj` は手で編集しない）。
+- ROM は MPX68K と同様に外部ファイル。iOS では `Documents/MPX68K`（「ファイル」アプリの
+  「このiPhone内」→「MPX68K for iOS」→「MPX68K」）に `IPLROM.DAT` / `CGROM.DAT` を置く。
 - ROM（CGROM.DAT / IPLROM.DAT / SC-55 ROM 等）は絶対にコミットしない。
 
 ## iPhone Duo 対応の要件（Apple 公式ガイダンスより）
@@ -54,8 +59,8 @@ iPhoneOS 27.0 SDK（arm64, `-DHAVE_C68K -DTARGET_IOS`）で `clang -fsyntax-only
   iOS では Documents にゴミを出しうるため無効化する。
 - `scc.c` の `/dev/ptmx`、`winx68k.cpp` の Monitor UNIX ソケットは iOS では使わない（TCP シリアルのみ検討）。
 - `fmgen_simd.h` は arm64 で NEON に分岐済み。`*_optimized*` ファイルはプロジェクト外のデッドコード。
-- 旧 X68iOS の画像リソース（`JoyCardLeft.png` / `JoyCardStick.png` / `X68000LogoW.png` / `X68000Mouse.png`）は
-  MPX68K で削除済みなので、`68a0c0c` から復元する。
+- 旧 X68iOS の画像リソースのうち現行コードが参照するのは `jStick` / `jSubstrate` / `X68000LogoW`（アセットカタログ）のみで、
+  いずれも MPX68K に残っているため復元不要。
 - SC-55（Nuked-SC55, `SC55/core`）は SDL 非依存化済みで iOS でもそのままビルド可能見込み。Debug でも `-O2`。
 - ブリッジングヘッダは新コアの API（`X68000_GetImageInto` / `X68000_GetFrameInfo` / `X68000_IsFrameDirty` /
   `X68000_Mouse_Event` / `SCC_*` / `X68000_SCSI_*` / `X68000_Monitor_*` 等）を使うこと。
@@ -75,8 +80,26 @@ iPhoneOS 27.0 SDK（arm64, `-DHAVE_C68K -DTARGET_IOS`）で `clang -fsyntax-only
 
 ## フェーズ
 
-1. **iOS ターゲット復元**: `68a0c0c` の `X68000 iOS/` を復元し、UIScene 化した上で新コアに対してビルドを通す。
+1. ✅ **iOS ターゲット復元**: `68a0c0c` の `X68000 iOS/` を復元し、UIScene 化した上で新コアに対してビルドを通す。
    Info.plist 整理（`armv7` 削除、`CADisableMinimumFrameDurationOnPhone`、表示名「MPX68K for iOS」）。
 2. **iOS 実用化**: オーディオセッション、タッチマウス、仮想パッド既定値、ファイル取り込み（Document Picker / ROM インポート）。
 3. **リサイズ対応**: `.resizeFill` 化、safe area 内に 4:3 画面 + 余白に操作系を配置、Split View 対応。
 4. **iPhone Duo 最適化**: ReservedRegion / UIArrangementViewController による半開きノート PC モード、120Hz 検証。
+
+## Phase 1 結果（2026-09-25）
+
+- `MPX68K iOS.xcodeproj` を生成し、Xcode 27.0 / iOS 27.0 シミュレータでビルド・起動を確認。
+  ROM 未配置時は iOS のアラートで配置場所を案内する。
+- iOS 固有: `SceneDelegate`（UIScene ライフサイクル）、プログラムで生成する `SKView`、
+  ハードウェアキーボード（`iOSKeyMap`）、`AVAudioSession`、iOS 用アプリアイコン（`X68000 iOS/Assets.xcassets`）。
+- 共有コードの変更（いずれも macOS の動作は不変）:
+  - `scsi.c` / `ppi.c`: IOKit USB/シリアルを `TARGET_OS_OSX` に限定、SCSI-U のスタブ追加
+  - `winx68k.cpp`: 旧 iOS 製品名由来のバージョン記号参照を削除
+  - `FileSystem` / `GameScene` / `MIDIController`: ブックマークオプションを `x68SecurityScope` 経由に（iOS では通常ブックマーク）
+  - `MIDIController` / `CRTOverlay`: AppKit 依存を `#if os(macOS)` に
+  - `JoyController`: 通知許可リクエストを macOS のみに
+  - `GameScene`: iOS のアラート表示を UIScene ベースに
+- 未対応（Phase 2 以降）: タッチマウス、仮想パッド既定表示、タイトルの「for macOS」表記、
+  ドキュメントピッカーでの ROM / ディスク取り込み、D88 のサンドボックス外パス、常時ファイルログの無効化、
+  バンドル ID（仮: `NANKIN.MPX68K-iOS`）の確定。
+- iPhone Duo シミュレータには Xcode 27.1 beta が必要（インストール済みの Xcode-beta は 27.0 beta）。

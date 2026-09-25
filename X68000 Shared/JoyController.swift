@@ -48,7 +48,9 @@ class JoyController {
     func setup( callback: @escaping (Status) -> Void ) {
         self.event = callback
 
+        #if os(macOS)
         initNotificationSetupCheck()
+        #endif
         
         NotificationCenter.default.addObserver(
             self, selector: #selector(self.handleControllerDidConnect),

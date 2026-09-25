@@ -12,6 +12,35 @@ import UniformTypeIdentifiers
 import AppKit
 #endif
 
+// Security-scoped bookmarks exist only on macOS; iOS uses plain bookmarks.
+extension URL.BookmarkCreationOptions {
+    static var x68SecurityScope: URL.BookmarkCreationOptions {
+        #if os(macOS)
+        return .withSecurityScope
+        #else
+        return []
+        #endif
+    }
+
+    static var x68ReadOnlySecurityScope: URL.BookmarkCreationOptions {
+        #if os(macOS)
+        return [.x68SecurityScope, .securityScopeAllowOnlyReadAccess]
+        #else
+        return []
+        #endif
+    }
+}
+
+extension URL.BookmarkResolutionOptions {
+    static var x68SecurityScope: URL.BookmarkResolutionOptions {
+        #if os(macOS)
+        return .withSecurityScope
+        #else
+        return []
+        #endif
+    }
+}
+
 // Notification for disk image loading
 extension Notification.Name {
     static let diskImageLoaded = Notification.Name("diskImageLoaded")
@@ -212,7 +241,7 @@ public class DiskStateManager {
         mountedFDDFiles[drive] = url
         if let bookmarkData = bookmarkData {
             mountedFDDBookmarks[drive] = bookmarkData
-        } else if let data = try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil) {
+        } else if let data = try? url.bookmarkData(options: .x68SecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil) {
             mountedFDDBookmarks[drive] = data
         }
         debugLog("Recorded FDD mount: drive \(drive) -> \(url.lastPathComponent)", category: .fileSystem)
@@ -222,7 +251,7 @@ public class DiskStateManager {
         mountedHDDFile = url
         if let bookmarkData = bookmarkData {
             mountedHDDBookmark = bookmarkData
-        } else if let data = try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil) {
+        } else if let data = try? url.bookmarkData(options: .x68SecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil) {
             mountedHDDBookmark = data
         }
         debugLog("Recorded HDD mount: \(url.lastPathComponent)", category: .fileSystem)
@@ -277,7 +306,7 @@ public class DiskStateManager {
                    let modDate = attributes[.modificationDate] as? Date {
 
                     let bookmarkData = (try? finalUrl.bookmarkData(
-                        options: .withSecurityScope,
+                        options: .x68SecurityScope,
                         includingResourceValuesForKeys: nil,
                         relativeTo: nil
                     )) ?? mountedFDDBookmarks[drive]
@@ -309,7 +338,7 @@ public class DiskStateManager {
                let modDate = attributes[.modificationDate] as? Date {
                 
                 let bookmarkData = (try? url.bookmarkData(
-                    options: .withSecurityScope,
+                    options: .x68SecurityScope,
                     includingResourceValuesForKeys: nil,
                     relativeTo: nil
                 )) ?? mountedHDDBookmark
@@ -432,7 +461,7 @@ public class DiskStateManager {
         if let bookmarkData = fddState.bookmarkData {
             do {
                 var isStale = false
-                let resolvedURL = try URL(resolvingBookmarkData: bookmarkData, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale)
+                let resolvedURL = try URL(resolvingBookmarkData: bookmarkData, options: .x68SecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale)
                 
                 if !isStale && resolvedURL.startAccessingSecurityScopedResource() {
                     restoreURL = resolvedURL
@@ -494,7 +523,7 @@ public class DiskStateManager {
                 var isStale = false
                 let resolvedURL = try URL(
                     resolvingBookmarkData: bookmarkData,
-                    options: .withSecurityScope,
+                    options: .x68SecurityScope,
                     relativeTo: nil,
                     bookmarkDataIsStale: &isStale
                 )
@@ -2457,7 +2486,7 @@ class FileSystem {
             X68000_LoadFDD(drive, url.path)
             
             // Record mount in Swift side for state management
-            let bookmarkData = try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
+            let bookmarkData = try? url.bookmarkData(options: .x68SecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
             DiskStateManager.shared.recordFDDMount(url, drive: drive, bookmarkData: bookmarkData)
             infoLog("Success: FDD loaded: \(url.lastPathComponent) to drive \(drive)", category: .fileSystem)
             // Save current disk state after successful load
