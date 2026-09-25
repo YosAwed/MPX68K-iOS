@@ -190,6 +190,14 @@ final class GameViewController: UIViewController {
 
     /// iPhone Duo: switch the "CRT" off while folding shut and back on while opening.
     private func setUpHingeEffect() {
+        #if DEBUG
+        // The simulator's Device Hub switches poses without intermediate angles, so
+        // preview the CRT effect with a three-finger double tap on the screen.
+        let preview = UITapGestureRecognizer(target: self, action: #selector(toggleCRTPreview))
+        preview.numberOfTouchesRequired = 3
+        preview.numberOfTapsRequired = 2
+        screenController.skView.addGestureRecognizer(preview)
+        #endif
         #if canImport(UIKit.UIArrangementViewController)
         if #available(iOS 27.1, *) {
             let interaction = UIHingeInteraction { [weak self] _, update in
@@ -199,6 +207,16 @@ final class GameViewController: UIViewController {
         }
         #endif
     }
+
+    #if DEBUG
+    @objc private func toggleCRTPreview() {
+        if screenController.isPoweredOn {
+            screenController.powerOff()
+        } else {
+            screenController.powerOn()
+        }
+    }
+    #endif
 
     #if canImport(UIKit.UIArrangementViewController)
     /// Angles (degrees) with some hysteresis so the effect doesn't flicker around one angle.
