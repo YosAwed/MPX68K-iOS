@@ -23,6 +23,20 @@ final class GameViewController: UIViewController {
     /// 起動メディアが無い状態でディスクを受け取ったら、読み込み完了後にリセットして起動する。
     private var resetWhenBootMediaReady = false
     private var didPromptForBootMedia = false
+
+    // MARK: Touch input
+    private enum InputMode {
+        case mouse   // トラックパッド風マウス
+        case pad     // 仮想ジョイスティック
+    }
+    /// Settings.bundle の「virtual_pad」と共有する
+    private static let virtualPadDefaultsKey = "virtual_pad"
+    private var touchMouse: TouchMouseController?
+    private let virtualPad = VirtualPadView()
+    private let inputModeButton = UIButton(type: .system)
+    private var inputMode: InputMode = .mouse {
+        didSet { applyInputMode() }
+    }
     private weak var bootMediaAlert: UIAlertController?
 
     private static let diskContentTypes: [UTType] = [
@@ -57,6 +71,8 @@ final class GameViewController: UIViewController {
             }
         }
 
+        setUpTouchInput(on: skView)
+
         NotificationCenter.default.addObserver(
             self, selector: #selector(diskImageLoadFinished(_:)),
             name: .diskImageLoadFinished, object: nil)
@@ -68,9 +84,63 @@ final class GameViewController: UIViewController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        // シーン内の入力モード表示は macOS 向け。iOS では右上のボタンで切り替える。
+        gameScene?.childNode(withName: "//InputModeButton")?.removeFromParent()
         let urls = pendingURLs
         pendingURLs.removeAll()
         urls.forEach(load)
+    }
+
+    // MARK: - Touch input
+
+    private func setUpTouchInput(on skView: SKView) {
+        touchMouse = TouchMouseController(view: skView) { [weak self] in self?.gameScene }
+
+        virtualPad.translatesAutoresizingMaskIntoConstraints = false
+        virtualPad.onChange = { bits in
+            X68000_Joystick_Set(0, bits)
+        }
+        view.addSubview(virtualPad)
+
+        inputModeButton.translatesAutoresizingMaskIntoConstraints = false
+        inputModeButton.tintColor = UIColor.white.withAlphaComponent(0.8)
+        inputModeButton.backgroundColor = UIColor.white.withAlphaComponent(0.12)
+        inputModeButton.layer.cornerRadius = 22
+        inputModeButton.addTarget(self, action: #selector(toggleInputMode), for: .touchUpInside)
+        view.addSubview(inputModeButton)
+
+        let guide = view.safeAreaLayoutGuide
+        NSLayoutConstraint.activate([
+            virtualPad.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            virtualPad.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            virtualPad.topAnchor.constraint(equalTo: view.topAnchor),
+            virtualPad.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
+            inputModeButton.widthAnchor.constraint(equalToConstant: 44),
+            inputModeButton.heightAnchor.constraint(equalToConstant: 44),
+            inputModeButton.topAnchor.constraint(equalTo: guide.topAnchor, constant: 8),
+            inputModeButton.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -12),
+        ])
+
+        inputMode = UserDefaults.standard.bool(forKey: Self.virtualPadDefaultsKey) ? .pad : .mouse
+    }
+
+    @objc private func toggleInputMode() {
+        inputMode = (inputMode == .mouse) ? .pad : .mouse
+        UserDefaults.standard.set(inputMode == .pad, forKey: Self.virtualPadDefaultsKey)
+    }
+
+    private func applyInputMode() {
+        let isPad = (inputMode == .pad)
+        touchMouse?.isEnabled = !isPad
+        virtualPad.isHidden = !isPad
+        if !isPad {
+            virtualPad.releaseAll()
+        }
+        // ボタンには「切り替え先」を表示する
+        let symbol = isPad ? "cursorarrow" : "gamecontroller"
+        inputModeButton.setImage(UIImage(systemName: symbol), for: .normal)
+        inputModeButton.accessibilityLabel = isPad ? "マウス操作に切り替え" : "仮想パッドに切り替え"
     }
 
     // MARK: - Disk images

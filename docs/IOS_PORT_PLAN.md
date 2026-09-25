@@ -114,3 +114,16 @@ iPhoneOS 27.0 SDK（arm64, `-DHAVE_C68K -DTARGET_IOS`）で `clang -fsyntax-only
   - 停止後にディスクを開いてもリセットされないため起動しない。iOS ではディスク投入時のリセット、またはリセット UI が必要。
   - 再起動時に前回のディスクが自動マウントされない（AutoMountMode 既定値 hybrid はファイルを記録するだけ）。
 - macOS ターゲットは swift-crypto を外せば本ブランチの共有コード変更込みでビルド可能（swift-crypto はどの Swift ファイルからも import されていない）。
+
+### タッチ入力（2026-09-25）
+
+- マウス: `TouchMouseController`（SKView 上のジェスチャー）。1 本指ドラッグ＝相対移動、タップ＝左クリック、
+  2 本指タップ＝右クリック、長押し＋ドラッグ＝左ドラッグ、ポインタのホバー（iPad トラックパッド / Pencil）＝移動。
+  `X68MouseController` のキャプチャモード（macOS と同じ相対入力経路）に流す。X-BASIC の `mouse(1)` で追従を確認。
+- 仮想パッド: `VirtualPadView`（UIKit、Auto Layout、safe area 基準）。8 方向パッド＋A/B。
+  A＝トリガー A（`JOY_TRG2`, bit5）、B＝トリガー B（`JOY_TRG1`, bit6）。X-BASIC の `stick(1)`=6 / `strig(1)`=1 を確認。
+  ※ macOS 版の画面上ジョイカード（`X68JoyCard`）は A/B が逆（A=`JOY_TRG1`）。物理パッド（`JoyController`）は規格どおり。
+- 右上のボタンでマウス／パッドを切り替え（`virtual_pad` に保存）。GameScene の旧タッチマウス（絶対座標）と
+  シーン内の入力モード表示は iOS では使わない。
+- 既知の問題: ハードウェアキーボードが US 配列のキー位置をそのまま送るため、記号が JIS 配列としてずれる
+  （例: `(` は US の `*` 位置）。`iOSKeyMap` を文字ベースまたは JIS 配列対応にする必要がある。

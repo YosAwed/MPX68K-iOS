@@ -1105,15 +1105,8 @@ class GameScene: SKScene {
 
         // Spinny node creation removed to eliminate green square at startup
 
-        #if os(iOS)
-        let tapGes = UITapGestureRecognizer(target: self, action: #selector(self.tapped(_:)))
-        tapGes.numberOfTapsRequired = 1
-        tapGes.numberOfTouchesRequired = 1
-        self.view?.addGestureRecognizer(tapGes)
-
-        let hover = UIHoverGestureRecognizer(target: self, action: #selector(hovering(_:)))
-        self.view?.addGestureRecognizer(hover)
-        #endif
+        // iOS: the touch mouse (trackpad-style gestures) is installed by the
+        // iOS GameViewController on top of the SKView.
         self.addChild(spr)
 
         // Superimpose: attach background video manager and apply uniforms
@@ -2791,41 +2784,7 @@ extension GameScene {
             }
         }
         
-        if touches.count == 1 {
-            if let touch = touches.first as UITouch? {
-                let location = touch.location(in: self)
-                let t = self.atPoint(location)
-                debugLog("Touch target: \(t.name ?? "No name")", category: .input)
-                if t.name == "LButton" {
-                    if let shapeNode = t as? SKShapeNode {
-                        shapeNode.fillColor = .yellow
-                    }
-                    mouseController?.Click(0, true)
-                } else if t.name == "RButton" {
-                    if let shapeNode = t as? SKShapeNode {
-                        shapeNode.fillColor = .yellow
-                    }
-                    mouseController?.Click(1, true)
-                } else if t.name == "MouseBody" {
-                    mouseController?.ResetPosition(location, scene!.size)
-                } else {
-                    mouseController?.Click(0, true)
-                    mouseController?.ResetPosition(location, scene!.size)
-                }
-            }
-        }
-        for t in touches {
-            let location = t.location(in: self)
-            // Only create spinny for clock control area (upper area, excluding mode button area)
-            let modeButtonX = -size.width/2 + 150
-            let modeButtonY = size.height/2 - 30
-            let distanceFromModeButton = sqrt(pow(location.x - modeButtonX, 2) + pow(location.y - modeButtonY, 2))
-            
-            if location.y > 400.0 && distanceFromModeButton >= 100.0 {
-                // self.makeSpinny(at: location, color: SKColor.green) // Removed to eliminate green square
-            }
-            break
-        }
+        // Mouse input is handled by the iOS GameViewController's gestures.
     }
     
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -2839,18 +2798,6 @@ extension GameScene {
                 device.touchesMoved(touches)
             }
         }
-        
-        if touches.count == 1 {
-            if let touch = touches.first as UITouch? {
-                let location = touch.location(in: self)
-                let t = self.atPoint(location)
-                if t.name == "MouseBody" {
-                    mouseController?.SetPosition(location, scene!.size)
-                } else {
-                    mouseController?.SetPosition(location, scene!.size)
-                }
-            }
-        }
     }
     
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -2862,28 +2809,6 @@ extension GameScene {
         if currentInputMode == .joycard {
             for device in devices {
                 device.touchesEnded(touches)
-            }
-        }
-        
-        if let touch = touches.first as UITouch? {
-            let location = touch.location(in: self)
-            let t = self.atPoint(location)
-            debugLog("Touch target: \(t.name ?? "No name")", category: .input)
-            if t.name == "LButton" {
-                if let shapeNode = t as? SKShapeNode {
-                    shapeNode.fillColor = .black
-                }
-                mouseController?.Click(0, false)
-            } else if t.name == "RButton" {
-                if let shapeNode = t as? SKShapeNode {
-                    shapeNode.fillColor = .black
-                }
-                mouseController?.Click(1, false)
-            } else if t.name == "MouseBody" {
-                let _ = Float(location.x)
-                let _ = Float(location.y)
-            } else {
-                mouseController?.Click(0, false)
             }
         }
     }
