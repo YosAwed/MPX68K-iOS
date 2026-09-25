@@ -49,6 +49,6 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     func saveState() {
-        gameViewController?.saveSRAM()
+        gameViewController?.saveState()
     }
 }

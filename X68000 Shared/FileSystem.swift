@@ -31,6 +31,23 @@ extension URL.BookmarkCreationOptions {
     }
 }
 
+/// Saved disk paths are absolute. On iOS the app container path can change
+/// (app updates, reinstalls), so remap paths under the old container's
+/// Documents folder onto the current one.
+func x68CurrentContainerURL(forSavedPath path: String) -> URL {
+    let url = URL(fileURLWithPath: path)
+    #if os(iOS)
+    guard !FileManager.default.fileExists(atPath: path),
+          let range = path.range(of: "/Documents/"),
+          let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+        return url
+    }
+    return documents.appendingPathComponent(String(path[range.upperBound...]))
+    #else
+    return url
+    #endif
+}
+
 extension URL.BookmarkResolutionOptions {
     static var x68SecurityScope: URL.BookmarkResolutionOptions {
         #if os(macOS)
@@ -44,6 +61,8 @@ extension URL.BookmarkResolutionOptions {
 // Notification for disk image loading
 extension Notification.Name {
     static let diskImageLoaded = Notification.Name("diskImageLoaded")
+    /// Posted when a disk image load request finishes (success or failure).
+    static let diskImageLoadFinished = Notification.Name("diskImageLoadFinished")
 }
 
 // MARK: - Disk Mount State Data Structures
@@ -376,7 +395,7 @@ public class DiskStateManager {
             if restoreFDDState(fddState) {
                 successCount += 1
                 // Arm reinsert protection for apps that auto-eject on startup
-                DiskStateManager.shared.markFDDReinsertProtection(drive: fddState.drive, path: fddState.filePath)
+                DiskStateManager.shared.markFDDReinsertProtection(drive: fddState.drive, path: x68CurrentContainerURL(forSavedPath: fddState.filePath).path)
             }
         }
         
@@ -413,7 +432,7 @@ public class DiskStateManager {
             totalCount += 1
             if restoreFDDState(fddState) {
                 successCount += 1
-                DiskStateManager.shared.markFDDReinsertProtection(drive: fddState.drive, path: fddState.filePath)
+                DiskStateManager.shared.markFDDReinsertProtection(drive: fddState.drive, path: x68CurrentContainerURL(forSavedPath: fddState.filePath).path)
             }
         }
 
@@ -447,7 +466,7 @@ public class DiskStateManager {
     
     // FDD状態の復元
     private func restoreFDDState(_ fddState: DiskMountState.FDDState) -> Bool {
-        let url = URL(fileURLWithPath: fddState.filePath)
+        let url = x68CurrentContainerURL(forSavedPath: fddState.filePath)
         
         // ファイル整合性検証
         guard validateFileIntegrity(url: url, expectedSize: fddState.fileSize, expectedModDate: fddState.lastModified) else {
@@ -463,7 +482,7 @@ public class DiskStateManager {
                 var isStale = false
                 let resolvedURL = try URL(resolvingBookmarkData: bookmarkData, options: .x68SecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale)
                 
-                if !isStale && resolvedURL.startAccessingSecurityScopedResource() {
+                if !isStale && FileManager.default.fileExists(atPath: resolvedURL.path) && resolvedURL.startAccessingSecurityScopedResource() {
                     restoreURL = resolvedURL
                     securityScopedURL = resolvedURL
                     infoLog("Security-scoped access restored for FDD drive \(fddState.drive)", category: .fileSystem)
@@ -509,7 +528,7 @@ public class DiskStateManager {
     }
 
     private func prepareHDDRestore(_ hddState: DiskMountState.HDDState) -> PreparedHDDRestore? {
-        let url = URL(fileURLWithPath: hddState.filePath)
+        let url = x68CurrentContainerURL(forSavedPath: hddState.filePath)
 
         guard validateFileIntegrity(url: url, expectedSize: hddState.fileSize, expectedModDate: hddState.lastModified) else {
             warningLog("HDD file validation failed: \(hddState.fileName)", category: .fileSystem)
@@ -528,7 +547,7 @@ public class DiskStateManager {
                     bookmarkDataIsStale: &isStale
                 )
 
-                if !isStale && resolvedURL.startAccessingSecurityScopedResource() {
+                if !isStale && FileManager.default.fileExists(atPath: resolvedURL.path) && resolvedURL.startAccessingSecurityScopedResource() {
                     restoreURL = resolvedURL
                     securityScopedURL = resolvedURL
                     infoLog("Security-scoped access restored for HDD", category: .fileSystem)
@@ -727,6 +746,10 @@ class FileSystem {
             // Now that the async restore is done (success or fail), ask
             // GameViewController whether the boot-media prompt needs to
             // appear. It no-ops if a disk is already ready.
+            GameViewController.shared?.promptForBootMediaIfNeeded()
+        }
+        #elseif os(iOS)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             GameViewController.shared?.promptForBootMediaIfNeeded()
         }
         #endif

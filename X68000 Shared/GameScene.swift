@@ -236,6 +236,7 @@ class GameScene: SKScene {
     // Method to clear loading file after completion
     func clearLoadingFile(_ url: URL) {
         GameScene.endLoadingFile(url.path)
+        NotificationCenter.default.post(name: .diskImageLoadFinished, object: url)
     }
     
     // MARK: - FDD Management
