@@ -3149,6 +3149,7 @@ extension GameScene {
         case 33: return "["
         case 30: return "]"
         case 42: return "\\"
+        case 93: return "\\" // JIS ¥ key (the X68000 ¥ key is KeyTable '\\')
         case 41: return ";"  // semicolon key (US keyboard)
         case 39: return "'"  // apostrophe key (US keyboard)
         case 43: return ","

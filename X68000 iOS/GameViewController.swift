@@ -410,6 +410,11 @@ final class GameViewController: UIViewController {
         // With CTRL held, `characters` is a control code; use the plain key.
         let text = key.modifierFlags.contains(.control) ? key.charactersIgnoringModifiers : key.characters
         guard let character = text.first, let mapped = iOSKeyMap.characterKey(for: character) else {
+            if let code = iOSKeyMap.jisKeyCode(for: usage) {
+                X68000_Key_Down(code)
+                pressedKeyCodes[usage] = code
+                return true
+            }
             return false
         }
         // Letters follow the SHIFT key as pressed (CAPS is forwarded to the X68000).

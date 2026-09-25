@@ -76,6 +76,15 @@ enum iOSKeyMap {
         .keypadEnter: 0x0d,
     ]
 
+    /// JIS-only keys whose character may not come through with a US host layout.
+    static func jisKeyCode(for usage: UIKeyboardHIDUsage) -> UInt32? {
+        switch usage {
+        case .keyboardInternational3: return 0x5c   // ¥ key
+        case .keyboardInternational1: return 0x5f   // ろ key (_)
+        default: return nil
+        }
+    }
+
     // MARK: - Printable characters (character based)
 
     static func characterKey(for character: Character) -> CharacterKey? {
@@ -119,11 +128,10 @@ enum iOSKeyMap {
             "`": key("@", shift: true),
             "[": key("[", shift: false),
             "{": key("[", shift: true),
-            // KeyTable maps ':' to the ";+" key and ';' to the ":*" key, so swap them here.
-            ";": key(":", shift: false),
-            "+": key(":", shift: true),
-            ":": key(";", shift: false),
-            "*": key(";", shift: true),
+            ";": key(";", shift: false),
+            "+": key(";", shift: true),
+            ":": key(":", shift: false),
+            "*": key(":", shift: true),
             "]": key("]", shift: false),
             "}": key("]", shift: true),
             ",": key(",", shift: false),
