@@ -39,12 +39,24 @@ final class ScreenViewController: UIViewController {
         widthConstraints.forEach { $0.constant = -2 * inset }
     }
 
+    private let bezel = MonitorBezelView()
+    /// White glow used by the CRT power on/off effect.
+    private let flash = UIView()
+    private(set) var isPoweredOn = true
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .black
+        bezel.frame = view.bounds
+        bezel.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        view.addSubview(bezel)
         skView.translatesAutoresizingMaskIntoConstraints = false
         skView.backgroundColor = .black
         view.addSubview(skView)
+        flash.backgroundColor = .white
+        flash.alpha = 0
+        flash.isUserInteractionEnabled = false
+        view.addSubview(flash)
 
         let guide = view.safeAreaLayoutGuide
         let fillWidth = skView.widthAnchor.constraint(equalTo: guide.widthAnchor)
@@ -65,6 +77,85 @@ final class ScreenViewController: UIViewController {
         ])
     }
 
+    /// The screen's untransformed frame (`frame` is not valid while the power effect scales it).
+    private var screenRect: CGRect {
+        CGRect(x: skView.center.x - skView.bounds.width / 2,
+               y: skView.center.y - skView.bounds.height / 2,
+               width: skView.bounds.width, height: skView.bounds.height)
+    }
+
+    private func placeFlash() {
+        flash.bounds = skView.bounds
+        flash.center = skView.center
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        bezel.screenFrame = screenRect
+        placeFlash()
+    }
+
+    // MARK: - CRT power effect
+
+    /// Collapses the screen to a horizontal line, then a dot, like a CRT switching off.
+    func powerOff() {
+        guard isPoweredOn else { return }
+        isPoweredOn = false
+        placeFlash()
+        flash.transform = .identity
+        UIView.animateKeyframes(withDuration: 0.35, delay: 0, options: [.calculationModeCubic]) {
+            UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.5) {
+                let line = CGAffineTransform(scaleX: 1, y: 0.008)
+                self.skView.transform = line
+                self.flash.transform = line
+                self.flash.alpha = 0.9
+            }
+            UIView.addKeyframe(withRelativeStartTime: 0.5, relativeDuration: 0.5) {
+                let dot = CGAffineTransform(scaleX: 0.02, y: 0.008)
+                self.skView.transform = dot
+                self.flash.transform = dot
+                self.skView.alpha = 0
+                self.flash.alpha = 0
+            }
+        }
+    }
+
+    /// Grows a bright dot into a line and then the full picture, like a CRT switching on.
+    func powerOn() {
+        guard !isPoweredOn else { return }
+        isPoweredOn = true
+        placeFlash()
+        let dot = CGAffineTransform(scaleX: 0.02, y: 0.008)
+        skView.transform = dot
+        flash.transform = dot
+        flash.alpha = 1
+        skView.alpha = 1
+        UIView.animateKeyframes(withDuration: 0.45, delay: 0, options: [.calculationModeCubic]) {
+            UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.35) {
+                let line = CGAffineTransform(scaleX: 1, y: 0.008)
+                self.skView.transform = line
+                self.flash.transform = line
+            }
+            UIView.addKeyframe(withRelativeStartTime: 0.35, relativeDuration: 0.65) {
+                self.skView.transform = .identity
+                self.flash.transform = .identity
+                self.flash.alpha = 0
+            }
+        }
+    }
+
+    /// Shows the picture immediately (e.g. after moving to the outer display).
+    func resetPower() {
+        isPoweredOn = true
+        skView.layer.removeAllAnimations()
+        flash.layer.removeAllAnimations()
+        skView.transform = .identity
+        skView.alpha = 1
+        flash.transform = .identity
+        flash.alpha = 0
+        placeFlash()
+    }
+
     /// Keeps the SKView at the scene's aspect ratio so the aspect-fit scene fills it.
     func setAspectRatio(_ size: CGSize) {
         guard size.width > 0, size.height > 0 else { return }
@@ -73,6 +164,66 @@ final class ScreenViewController: UIViewController {
         aspectConstraint = skView.widthAnchor.constraint(equalTo: skView.heightAnchor,
                                                          multiplier: size.width / size.height)
         aspectConstraint?.isActive = true
+    }
+}
+
+/// Fills the space around the emulator screen with a dark monitor bezel
+/// (HIG: add artwork to letterbox/pillarbox areas instead of leaving them black).
+final class MonitorBezelView: UIView {
+    /// The emulator screen's frame in this view's coordinates.
+    var screenFrame: CGRect = .zero {
+        didSet { if screenFrame != oldValue { setNeedsDisplay() } }
+    }
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isOpaque = true
+        contentMode = .redraw
+        isUserInteractionEnabled = false
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func draw(_ rect: CGRect) {
+        guard let context = UIGraphicsGetCurrentContext() else { return }
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+
+        // Cabinet: soft vertical gradient.
+        let cabinet = [UIColor(white: 0.16, alpha: 1).cgColor, UIColor(white: 0.07, alpha: 1).cgColor] as CFArray
+        if let gradient = CGGradient(colorsSpace: colorSpace, colors: cabinet, locations: [0, 1]) {
+            context.drawLinearGradient(gradient, start: CGPoint(x: 0, y: bounds.minY),
+                                       end: CGPoint(x: 0, y: bounds.maxY), options: [])
+        }
+        guard !screenFrame.isEmpty else { return }
+
+        // Bezel around the tube, with a highlight on the upper edge.
+        let bezelInset: CGFloat = -10
+        let bezelRect = screenFrame.insetBy(dx: bezelInset, dy: bezelInset).intersection(bounds)
+        let bezelPath = UIBezierPath(roundedRect: bezelRect, cornerRadius: 14)
+        UIColor(white: 0.04, alpha: 1).setFill()
+        bezelPath.fill()
+        context.saveGState()
+        bezelPath.addClip()
+        let rim = [UIColor(white: 1, alpha: 0.10).cgColor, UIColor(white: 1, alpha: 0).cgColor] as CFArray
+        if let gradient = CGGradient(colorsSpace: colorSpace, colors: rim, locations: [0, 1]) {
+            context.drawLinearGradient(gradient, start: CGPoint(x: 0, y: bezelRect.minY),
+                                       end: CGPoint(x: 0, y: bezelRect.minY + 24), options: [])
+        }
+        context.restoreGState()
+        UIColor(white: 1, alpha: 0.08).setStroke()
+        bezelPath.lineWidth = 1
+        bezelPath.stroke()
+
+        // Power lamp below the bottom-right corner of the screen when there is room.
+        let lampY = bezelRect.maxY + 12
+        if lampY + 4 < bounds.maxY {
+            let lamp = CGRect(x: bezelRect.maxX - 18, y: lampY, width: 8, height: 4)
+            context.setShadow(offset: .zero, blur: 6, color: UIColor.systemGreen.withAlphaComponent(0.8).cgColor)
+            UIColor.systemGreen.setFill()
+            UIBezierPath(roundedRect: lamp, cornerRadius: 2).fill()
+        }
     }
 }
 

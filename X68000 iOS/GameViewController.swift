@@ -113,6 +113,7 @@ final class GameViewController: UIViewController {
         }
 
         setUpTouchInput(on: skView)
+        setUpHingeEffect()
 
         NotificationCenter.default.addObserver(
             self, selector: #selector(diskImageLoadFinished(_:)),
@@ -184,6 +185,47 @@ final class GameViewController: UIViewController {
         ])
         container.didMove(toParent: self)
     }
+
+    // MARK: - Hinge effect
+
+    /// iPhone Duo: switch the "CRT" off while folding shut and back on while opening.
+    private func setUpHingeEffect() {
+        #if canImport(UIKit.UIArrangementViewController)
+        if #available(iOS 27.1, *) {
+            let interaction = UIHingeInteraction { [weak self] _, update in
+                self?.hingeChanged(update.hinge)
+            }
+            view.addInteraction(interaction)
+        }
+        #endif
+    }
+
+    #if canImport(UIKit.UIArrangementViewController)
+    /// Angles (degrees) with some hysteresis so the effect doesn't flicker around one angle.
+    private static let crtOffAngle: CGFloat = 50
+    private static let crtOnAngle: CGFloat = 70
+
+    @available(iOS 27.1, *)
+    private func hingeChanged(_ hinge: UIHinge?) {
+        guard let hinge else {
+            // No hinge in this hierarchy (not an iPhone Duo).
+            screenController.resetPower()
+            return
+        }
+        switch hinge.status {
+        case .partiallyOpen, .fullyOpen:
+            let degrees = hinge.angle * 180 / .pi
+            if degrees < Self.crtOffAngle {
+                screenController.powerOff()
+            } else if degrees > Self.crtOnAngle {
+                screenController.powerOn()
+            }
+        default:
+            // Closed: the app is on the outer display, show the picture as usual.
+            screenController.resetPower()
+        }
+    }
+    #endif
 
     private func setUpTouchInput(on skView: SKView) {
         touchMouse = TouchMouseController(view: skView) { [weak self] in self?.gameScene }
