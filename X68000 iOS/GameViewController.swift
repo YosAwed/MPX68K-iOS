@@ -197,6 +197,25 @@ final class GameViewController: UIViewController {
         preview.numberOfTouchesRequired = 3
         preview.numberOfTapsRequired = 2
         screenController.skView.addGestureRecognizer(preview)
+
+        // Device Hub can't produce three-finger taps and keeps Command shortcuts for
+        // itself, so also offer a button on the screen's top-leading corner.
+        let button = UIButton(type: .system)
+        button.setTitle("CRT", for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 12, weight: .semibold)
+        button.tintColor = UIColor.white.withAlphaComponent(0.8)
+        button.backgroundColor = UIColor.systemRed.withAlphaComponent(0.35)
+        button.layer.cornerRadius = 14
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.addTarget(self, action: #selector(toggleCRTPreview), for: .touchUpInside)
+        let screenView = screenController.view!
+        screenView.addSubview(button)
+        NSLayoutConstraint.activate([
+            button.widthAnchor.constraint(equalToConstant: 48),
+            button.heightAnchor.constraint(equalToConstant: 28),
+            button.leadingAnchor.constraint(equalTo: screenView.safeAreaLayoutGuide.leadingAnchor, constant: 16),
+            button.topAnchor.constraint(equalTo: screenView.safeAreaLayoutGuide.topAnchor, constant: 16),
+        ])
         #endif
         #if canImport(UIKit.UIArrangementViewController)
         if #available(iOS 27.1, *) {
