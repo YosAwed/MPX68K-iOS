@@ -95,10 +95,6 @@ final class GameViewController: UIViewController {
         let skView = screenController.skView
         skView.ignoresSiblingOrder = true
         skView.isMultipleTouchEnabled = true
-        #if DEBUG
-        skView.showsFPS = true
-        skView.showsNodeCount = true
-        #endif
 
         let scene = GameScene.newGameScene()
         gameScene = scene
