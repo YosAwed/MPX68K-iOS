@@ -98,6 +98,8 @@ final class GameViewController: UIViewController {
         view.backgroundColor = .black
 
         setUpLayout()
+        controlPanel.onLayout = { [weak self] in self?.updateLayoutState() }
+        screenController.onLayout = { [weak self] in self?.updateLayoutState() }
 
         let skView = screenController.skView
         skView.ignoresSiblingOrder = true
@@ -130,6 +132,19 @@ final class GameViewController: UIViewController {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        updateLayoutState()
+    }
+
+    /// Derives split / stacking / keyboard state from where the arrangement put the panes.
+    /// Runs after this view and after either pane lays out: going from partially folded to
+    /// fully open keeps the window size, so only the panes move and this view's
+    /// viewDidLayoutSubviews may not run (or runs before the panes reach their new frames).
+    private func updateLayoutState() {
+        guard isViewLoaded, controlPanel.isViewLoaded, screenController.isViewLoaded,
+              view.bounds.width > 0, view.bounds.height > 0 else { return }
+        let wasSplit = isSplit
+        let wasStacked = stacksControlsBelowScreen
+        let wasKeyboard = showsFullKeyboard
         // Overlaid, the panel covers the screen; split by the fold, they don't overlap.
         let panelFrame = controlPanel.view.convert(controlPanel.view.bounds, to: view)
         let screenFrame = screenController.view.convert(screenController.view.bounds, to: view)
@@ -140,6 +155,12 @@ final class GameViewController: UIViewController {
         let screenBounds = view.window?.windowScene?.screen.bounds ?? .zero
         let isInnerDisplay = min(screenBounds.width, screenBounds.height) >= 600
         showsFullKeyboard = isPortrait && isInnerDisplay
+        if isSplit != wasSplit || stacksControlsBelowScreen != wasStacked || showsFullKeyboard != wasKeyboard {
+            // Constraints changed from inside a pane's layout pass; lay out again.
+            controlPanel.view.setNeedsLayout()
+            screenController.view.setNeedsLayout()
+            view.setNeedsLayout()
+        }
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -252,6 +273,8 @@ final class GameViewController: UIViewController {
 
     @available(iOS 27.1, *)
     private func hingeChanged(_ hinge: UIHinge?) {
+        // Folding changes where the panes go; make sure the layout state follows.
+        view.setNeedsLayout()
         guard let hinge else {
             // No hinge in this hierarchy (not an iPhone Duo).
             screenController.resetPower()

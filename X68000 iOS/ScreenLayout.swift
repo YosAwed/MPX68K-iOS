@@ -81,8 +81,12 @@ final class ScreenViewController: UIViewController {
     /// (scaling the Metal-backed SKView resamples it and looks blurred).
     private let crtMask = UIView()
 
+    /// Called after the screen lays out (see ControlPanelViewController.onLayout).
+    var onLayout: (() -> Void)?
+
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        defer { onLayout?() }
         bezel.screenFrame = skView.frame
         if isPoweredOn && skView.mask == nil {
             flash.frame = skView.frame
@@ -243,8 +247,18 @@ final class MonitorBezelView: UIView {
 }
 
 final class ControlPanelViewController: UIViewController {
+    /// Called after the panel lays out. The arrangement moves the panel without laying
+    /// out the parent view (e.g. partially folded -> fully open at the same window size),
+    /// so the parent re-derives its layout state from here.
+    var onLayout: (() -> Void)?
+
     override func loadView() {
         view = PassThroughView()
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        onLayout?()
     }
 }
 
