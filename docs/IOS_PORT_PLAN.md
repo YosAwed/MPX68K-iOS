@@ -3,6 +3,8 @@
 MPX68K（macOS 版）をベースに、iOS / iPadOS 版「MPX68K for iOS」を開発する。
 最重要ターゲットは iPhone Duo（iOS 27、内側 7.6" 1878×2670 / 外側 5.4" 1398×2034、ProMotion 120Hz）。
 
+> 開発環境の移行手順・ブランチ状況・次の作業は [IOS_HANDOFF.md](IOS_HANDOFF.md) を参照。
+
 ## リポジトリ運用
 
 - `origin`   : https://github.com/YosAwed/MPX68K-iOS （private）
