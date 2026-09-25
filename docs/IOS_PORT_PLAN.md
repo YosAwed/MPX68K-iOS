@@ -103,3 +103,14 @@ iPhoneOS 27.0 SDK（arm64, `-DHAVE_C68K -DTARGET_IOS`）で `clang -fsyntax-only
   ドキュメントピッカーでの ROM / ディスク取り込み、D88 のサンドボックス外パス、常時ファイルログの無効化、
   バンドル ID（仮: `NANKIN.MPX68K-iOS`）の確定。
 - iPhone Duo シミュレータには Xcode 27.1 beta が必要（インストール済みの Xcode-beta は 27.0 beta）。
+
+### 動作確認（2026-09-25, iPhone 18 Pro シミュレータ / iOS 27.0）
+
+- 外部 ROM（`Documents/MPX68K` の IPLROM.DAT / CGROM.DAT）で起動し、Human68k 3.02（XDF）が `A>` まで起動。
+- 「ファイルを開く」（`scene(_:openURLContexts:)`）経由の XDF マウントと、ハードウェアキーボード入力（`dir`）を確認。
+- 既知の問題:
+  - ディスクなしで起動すると IPL 実行中に CPU が `PC=$000154`（例外ベクタ領域）で停止し画面が黒いまま。
+    macOS 版（同一コア・同一 ROM）でも同じ状態を確認したため iOS 固有ではない（upstream で要調査）。
+  - 停止後にディスクを開いてもリセットされないため起動しない。iOS ではディスク投入時のリセット、またはリセット UI が必要。
+  - 再起動時に前回のディスクが自動マウントされない（AutoMountMode 既定値 hybrid はファイルを記録するだけ）。
+- macOS ターゲットは swift-crypto を外せば本ブランチの共有コード変更込みでビルド可能（swift-crypto はどの Swift ファイルからも import されていない）。
