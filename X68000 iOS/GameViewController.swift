@@ -31,10 +31,15 @@ final class GameViewController: UIViewController {
     }
     /// Settings.bundle の「virtual_pad」と共有する
     private static let virtualPadDefaultsKey = "virtual_pad"
+    /// The D-pad sends cursor keys instead of joystick directions.
+    private static let padCursorKeysDefaultsKey = "virtual_pad_cursor_keys"
     private var touchMouse: TouchMouseController?
     private let virtualPad = VirtualPadView()
     private let inputModeButton = UIButton(type: .system)
     private let trackpad = TrackpadSurfaceView()
+    private let padOutputButton = UIButton(type: .system)
+    private var padUsesCursorKeys = UserDefaults.standard.bool(forKey: GameViewController.padCursorKeysDefaultsKey)
+    private var lastPadBits: UInt8 = 0
 
     // MARK: Layout
     private let screenController = ScreenViewController()
@@ -166,8 +171,8 @@ final class GameViewController: UIViewController {
 
         let panel = controlPanel.view!
         virtualPad.translatesAutoresizingMaskIntoConstraints = false
-        virtualPad.onChange = { bits in
-            X68000_Joystick_Set(0, bits)
+        virtualPad.onChange = { [weak self] bits in
+            self?.sendPad(bits)
         }
         trackpad.translatesAutoresizingMaskIntoConstraints = false
         panel.addSubview(trackpad)
@@ -179,6 +184,14 @@ final class GameViewController: UIViewController {
         inputModeButton.layer.cornerRadius = 22
         inputModeButton.addTarget(self, action: #selector(toggleInputMode), for: .touchUpInside)
         panel.addSubview(inputModeButton)
+
+        padOutputButton.translatesAutoresizingMaskIntoConstraints = false
+        padOutputButton.tintColor = UIColor.white.withAlphaComponent(0.8)
+        padOutputButton.backgroundColor = UIColor.white.withAlphaComponent(0.12)
+        padOutputButton.layer.cornerRadius = 16
+        padOutputButton.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
+        padOutputButton.addTarget(self, action: #selector(togglePadOutput), for: .touchUpInside)
+        panel.addSubview(padOutputButton)
 
         let guide = panel.safeAreaLayoutGuide
         NSLayoutConstraint.activate([
@@ -195,10 +208,53 @@ final class GameViewController: UIViewController {
             inputModeButton.widthAnchor.constraint(equalToConstant: 44),
             inputModeButton.heightAnchor.constraint(equalToConstant: 44),
             inputModeButton.topAnchor.constraint(equalTo: guide.topAnchor, constant: 8),
+
+            padOutputButton.widthAnchor.constraint(equalToConstant: 56),
+            padOutputButton.heightAnchor.constraint(equalToConstant: 32),
+            padOutputButton.centerYAnchor.constraint(equalTo: inputModeButton.centerYAnchor),
+            padOutputButton.trailingAnchor.constraint(equalTo: inputModeButton.leadingAnchor, constant: -8),
             inputModeButton.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -12),
         ])
 
         inputMode = UserDefaults.standard.bool(forKey: Self.virtualPadDefaultsKey) ? .pad : .mouse
+    }
+
+    // MARK: Virtual pad output
+
+    @objc private func togglePadOutput() {
+        virtualPad.releaseAll()
+        padUsesCursorKeys.toggle()
+        UserDefaults.standard.set(padUsesCursorKeys, forKey: Self.padCursorKeysDefaultsKey)
+        updatePadOutputButton()
+    }
+
+    private func updatePadOutputButton() {
+        padOutputButton.setTitle(padUsesCursorKeys ? "KEY" : "JOY", for: .normal)
+        padOutputButton.accessibilityLabel = padUsesCursorKeys
+            ? "方向パッド: カーソルキー（タップでジョイスティックに切り替え）"
+            : "方向パッド: ジョイスティック（タップでカーソルキーに切り替え）"
+    }
+
+    /// Sends the pad state as joystick bits, or the directions as cursor keys.
+    private func sendPad(_ bits: UInt8) {
+        let directions: [(bit: UInt8, key: UInt32)] = [
+            (JOY_UP, 0x111), (JOY_DOWN, 0x112), (JOY_RIGHT, 0x113), (JOY_LEFT, 0x114),
+        ]
+        let directionMask: UInt8 = JOY_UP | JOY_DOWN | JOY_LEFT | JOY_RIGHT
+        if padUsesCursorKeys {
+            let changed = (bits ^ lastPadBits) & directionMask
+            for (bit, key) in directions where changed & bit != 0 {
+                if bits & bit != 0 {
+                    X68000_Key_Down(key)
+                } else {
+                    X68000_Key_Up(key)
+                }
+            }
+            X68000_Joystick_Set(0, bits & ~directionMask)
+        } else {
+            X68000_Joystick_Set(0, bits)
+        }
+        lastPadBits = bits
     }
 
     @objc private func toggleInputMode() {
@@ -210,6 +266,8 @@ final class GameViewController: UIViewController {
         let isPad = (inputMode == .pad)
         touchMouse?.isEnabled = !isPad
         virtualPad.isHidden = !isPad
+        padOutputButton.isHidden = !isPad
+        updatePadOutputButton()
         if !isPad {
             virtualPad.releaseAll()
         }
