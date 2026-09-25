@@ -43,6 +43,8 @@ final class GameViewController: UIViewController {
         didSet { if showsFullKeyboard != oldValue { applyInputMode() } }
     }
     private let padOutputButton = UIButton(type: .system)
+    private let diskButton = UIButton(type: .system)
+    private let topButtonRow = UIStackView()
     private var padUsesCursorKeys = UserDefaults.standard.bool(forKey: GameViewController.padCursorKeysDefaultsKey)
     private var lastPadBits: UInt8 = 0
 
@@ -305,7 +307,6 @@ final class GameViewController: UIViewController {
         inputModeButton.backgroundColor = UIColor.white.withAlphaComponent(0.12)
         inputModeButton.layer.cornerRadius = 22
         inputModeButton.addTarget(self, action: #selector(toggleInputMode), for: .touchUpInside)
-        panel.addSubview(inputModeButton)
 
         padOutputButton.translatesAutoresizingMaskIntoConstraints = false
         padOutputButton.tintColor = UIColor.white.withAlphaComponent(0.8)
@@ -313,7 +314,17 @@ final class GameViewController: UIViewController {
         padOutputButton.layer.cornerRadius = 16
         padOutputButton.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
         padOutputButton.addTarget(self, action: #selector(togglePadOutput), for: .touchUpInside)
-        panel.addSubview(padOutputButton)
+
+        setUpDiskButton()
+
+        // Hidden buttons collapse, so the disk button stays at the right edge on its own
+        // while the full keyboard is shown.
+        topButtonRow.axis = .horizontal
+        topButtonRow.alignment = .center
+        topButtonRow.spacing = 8
+        [diskButton, padOutputButton, inputModeButton].forEach { topButtonRow.addArrangedSubview($0) }
+        topButtonRow.translatesAutoresizingMaskIntoConstraints = false
+        panel.addSubview(topButtonRow)
 
         panel.addLayoutGuide(controlArea)
         let guide = controlArea
@@ -328,31 +339,200 @@ final class GameViewController: UIViewController {
 
             fullKeyboard.leadingAnchor.constraint(equalTo: guide.leadingAnchor, constant: 6),
             fullKeyboard.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -6),
-            fullKeyboard.topAnchor.constraint(equalTo: guide.topAnchor, constant: 8),
+            fullKeyboard.topAnchor.constraint(equalTo: topButtonRow.bottomAnchor, constant: 6),
             fullKeyboard.bottomAnchor.constraint(equalTo: guide.bottomAnchor, constant: -8),
 
             virtualPad.leadingAnchor.constraint(equalTo: guide.leadingAnchor),
             virtualPad.trailingAnchor.constraint(equalTo: guide.trailingAnchor),
-            virtualPad.topAnchor.constraint(equalTo: inputModeButton.bottomAnchor),
+            virtualPad.topAnchor.constraint(equalTo: topButtonRow.bottomAnchor),
             virtualPad.bottomAnchor.constraint(equalTo: guide.bottomAnchor),
 
             trackpad.leadingAnchor.constraint(equalTo: guide.leadingAnchor, constant: 16),
             trackpad.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -16),
-            trackpad.topAnchor.constraint(equalTo: inputModeButton.bottomAnchor, constant: 12),
+            trackpad.topAnchor.constraint(equalTo: topButtonRow.bottomAnchor, constant: 12),
             trackpad.bottomAnchor.constraint(equalTo: guide.bottomAnchor, constant: -16),
+
+            topButtonRow.topAnchor.constraint(equalTo: guide.topAnchor, constant: 8),
+            topButtonRow.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -12),
+            topButtonRow.heightAnchor.constraint(equalToConstant: 44),
 
             inputModeButton.widthAnchor.constraint(equalToConstant: 44),
             inputModeButton.heightAnchor.constraint(equalToConstant: 44),
-            inputModeButton.topAnchor.constraint(equalTo: guide.topAnchor, constant: 8),
-
+            diskButton.widthAnchor.constraint(equalToConstant: 44),
+            diskButton.heightAnchor.constraint(equalToConstant: 44),
             padOutputButton.widthAnchor.constraint(equalToConstant: 56),
             padOutputButton.heightAnchor.constraint(equalToConstant: 32),
-            padOutputButton.centerYAnchor.constraint(equalTo: inputModeButton.centerYAnchor),
-            padOutputButton.trailingAnchor.constraint(equalTo: inputModeButton.leadingAnchor, constant: -8),
-            inputModeButton.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -12),
         ])
 
         inputMode = UserDefaults.standard.bool(forKey: Self.virtualPadDefaultsKey) ? .pad : .mouse
+    }
+
+    // MARK: - Disk menu
+
+    private static let recentDisksDefaultsKey = "ios_recent_disks"
+    private static let maxRecentDisks = 8
+
+    private func setUpDiskButton() {
+        diskButton.setImage(UIImage(systemName: "opticaldiscdrive"), for: .normal)
+        diskButton.tintColor = UIColor.white.withAlphaComponent(0.8)
+        diskButton.backgroundColor = UIColor.white.withAlphaComponent(0.12)
+        diskButton.layer.cornerRadius = 22
+        diskButton.accessibilityLabel = "ディスク"
+        diskButton.showsMenuAsPrimaryAction = true
+        // Rebuilt each time it opens so the drive contents are current.
+        diskButton.menu = UIMenu(children: [
+            UIDeferredMenuElement.uncached { [weak self] completion in
+                completion(self?.diskMenuElements() ?? [])
+            }
+        ])
+    }
+
+    private func diskMenuElements() -> [UIMenuElement] {
+        var elements: [UIMenuElement] = (0..<2).map(floppyMenu(for:))
+        elements.append(hardDiskMenu())
+        let reset = UIAction(title: "リセット", image: UIImage(systemName: "arrow.counterclockwise")) { [weak self] _ in
+            self?.gameScene?.resetSystem()
+        }
+        elements.append(UIMenu(options: .displayInline, children: [reset]))
+        return elements
+    }
+
+    private func floppyMenu(for drive: Int) -> UIMenu {
+        let mounted = mountedFloppyURL(drive)
+        let insert = UIAction(title: mounted == nil ? "ディスクを入れる…" : "ディスクを入れ替える…",
+                              image: UIImage(systemName: "square.and.arrow.down")) { [weak self] _ in
+            self?.presentDiskLibrary(kind: .floppy, drive: drive)
+        }
+        let eject = UIAction(title: "取り出す", image: UIImage(systemName: "eject"),
+                             attributes: mounted == nil ? .disabled : .destructive) { [weak self] _ in
+            self?.gameScene?.ejectFDDFromDrive(drive)
+        }
+        var children: [UIMenuElement] = [insert, eject]
+        let recent = recentDisks().filter { $0.standardizedFileURL != mounted?.standardizedFileURL }
+        if !recent.isEmpty {
+            children.append(UIMenu(title: "最近使ったディスク", image: UIImage(systemName: "clock"),
+                                   children: recent.map { url in
+                UIAction(title: url.lastPathComponent) { [weak self] _ in
+                    self?.insertFloppy(url, drive: drive)
+                }
+            }))
+        }
+        return UIMenu(title: "ドライブ\(drive)：\(mounted?.lastPathComponent ?? "（なし）")",
+                      image: UIImage(systemName: "square.fill"), children: children)
+    }
+
+    private func hardDiskMenu() -> UIMenu {
+        let mounted = mountedHardDiskURL()
+        let attach = UIAction(title: mounted == nil ? "接続…" : "入れ替える…",
+                              image: UIImage(systemName: "externaldrive.badge.plus")) { [weak self] _ in
+            self?.presentDiskLibrary(kind: .hardDisk, drive: 0)
+        }
+        let detach = UIAction(title: "取り外す", image: UIImage(systemName: "eject"),
+                              attributes: mounted == nil ? .disabled : .destructive) { [weak self] _ in
+            self?.gameScene?.ejectHDD()
+        }
+        return UIMenu(title: "HDD：\(mounted?.lastPathComponent ?? "（なし）")",
+                      image: UIImage(systemName: "externaldrive"), children: [attach, detach])
+    }
+
+    private func mountedFloppyURL(_ drive: Int) -> URL? {
+        guard X68000_IsFDDReady(drive) != 0, let path = X68000_GetFDDFilename(drive) else { return nil }
+        let string = String(cString: path)
+        return string.isEmpty ? nil : URL(fileURLWithPath: string)
+    }
+
+    private func mountedHardDiskURL() -> URL? {
+        guard X68000_IsHDDReady() != 0, let path = X68000_GetHDDFilename() else { return nil }
+        let string = String(cString: path)
+        return string.isEmpty ? nil : URL(fileURLWithPath: string)
+    }
+
+    private func presentDiskLibrary(kind: DiskLibraryViewController.Kind, drive: Int) {
+        let title = kind == .floppy ? "ドライブ\(drive)に入れるディスク" : "接続するハードディスク"
+        let mounted = kind == .floppy ? mountedFloppyURL(drive) : mountedHardDiskURL()
+        let library = DiskLibraryViewController(
+            title: title, kind: kind, mountedURL: mounted,
+            onSelect: { [weak self] url in self?.mount(url, kind: kind, drive: drive) },
+            onImport: { [weak self] in self?.importDisks(kind: kind, drive: drive) })
+        let navigation = UINavigationController(rootViewController: library)
+        if let sheet = navigation.sheetPresentationController {
+            sheet.detents = [.medium(), .large()]
+            sheet.prefersGrabberVisible = true
+        }
+        present(navigation, animated: true)
+    }
+
+    /// Imports disk images from elsewhere into the library and mounts the first one.
+    private func importDisks(kind: DiskLibraryViewController.Kind, drive: Int) {
+        presentDocumentPicker(contentTypes: Self.diskContentTypes, allowsMultipleSelection: true) { [weak self] urls in
+            guard let self, let urls, !urls.isEmpty else { return }
+            let imported = urls.map(self.importIntoDocuments)
+            if let first = imported.first(where: { kind.extensions.contains($0.pathExtension.lowercased()) }) {
+                self.mount(first, kind: kind, drive: drive)
+            }
+        }
+    }
+
+    private func mount(_ url: URL, kind: DiskLibraryViewController.Kind, drive: Int) {
+        switch kind {
+        case .floppy:
+            insertFloppy(url, drive: drive)
+        case .hardDisk:
+            let needsBoot = !Self.hasBootMedia()
+            gameScene?.loadHDD(url: url) { [weak self] result in
+                guard let self else { return }
+                switch result {
+                case .success:
+                    self.rememberRecentDisk(url)
+                    if needsBoot { self.gameScene?.resetSystem() }
+                case .failure(let error):
+                    self.showDiskError(error, name: url.lastPathComponent)
+                }
+            }
+        }
+    }
+
+    private func insertFloppy(_ url: URL, drive: Int) {
+        let needsBoot = !Self.hasBootMedia()
+        switch gameScene?.loadFDDToDrive(url: url, drive: drive) {
+        case .success:
+            rememberRecentDisk(url)
+            if needsBoot {
+                // Same as a first boot disk from Files: boot from it.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+                    self?.gameScene?.resetSystem()
+                }
+            }
+        case .failure(let error):
+            showDiskError(error, name: url.lastPathComponent)
+        case nil:
+            break
+        }
+    }
+
+    private func showDiskError(_ error: Error, name: String) {
+        let alert = UIAlertController(title: "\(name) を読み込めませんでした",
+                                      message: error.localizedDescription, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
+
+    /// Recently used disks, stored by file name inside Documents/MPX68K.
+    private func recentDisks() -> [URL] {
+        guard let folder = DiskLibraryViewController.libraryFolder else { return [] }
+        let names = UserDefaults.standard.stringArray(forKey: Self.recentDisksDefaultsKey) ?? []
+        return names
+            .map { folder.appendingPathComponent($0) }
+            .filter { DiskLibraryViewController.Kind.floppy.extensions.contains($0.pathExtension.lowercased())
+                && FileManager.default.fileExists(atPath: $0.path) }
+    }
+
+    private func rememberRecentDisk(_ url: URL) {
+        let name = url.lastPathComponent
+        var names = UserDefaults.standard.stringArray(forKey: Self.recentDisksDefaultsKey) ?? []
+        names.removeAll { $0 == name }
+        names.insert(name, at: 0)
+        UserDefaults.standard.set(Array(names.prefix(Self.maxRecentDisks)), forKey: Self.recentDisksDefaultsKey)
     }
 
     // MARK: Virtual pad output
@@ -443,8 +623,12 @@ final class GameViewController: UIViewController {
     }
 
     @objc private func diskImageLoadFinished(_ notification: Notification) {
+        let url = notification.object as? URL
         // 読み込み完了はバックグラウンドから通知されることがある
         DispatchQueue.main.async { [weak self] in
+            if let url, DiskLibraryViewController.Kind.floppy.extensions.contains(url.pathExtension.lowercased()) {
+                self?.rememberRecentDisk(url)
+            }
             self?.handleDiskImageLoadFinished(attempt: 0)
         }
     }

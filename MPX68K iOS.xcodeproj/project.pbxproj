@@ -95,6 +95,10 @@
 			isa = PBXBuildFile;
 			fileRef = A24D2B985C9E6826FFD5B7B8;
 		};
+		35CC6FEA96101CE3CBBAD3C0 = {
+			isa = PBXBuildFile;
+			fileRef = B84E86D5DDA1F7F29838A58A;
+		};
 		37CBC7051FA924728CDDAA1F = {
 			isa = PBXBuildFile;
 			fileRef = 0A049FD9CD97C3C1B5475E97;
@@ -1078,6 +1082,12 @@
 			path = Assets.xcassets;
 			sourceTree = "<group>";
 		};
+		B84E86D5DDA1F7F29838A58A = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = DiskLibraryViewController.swift;
+			sourceTree = "<group>";
+		};
 		B8E385AE1022583DFEEA60DF = {
 			isa = PBXFileReference;
 			lastKnownFileType = sourcecode.c.c;
@@ -1654,6 +1664,7 @@
 			children = (
 				7527E6D5EE82200D52C6F79F,
 				B78FA99BE2DB3E028FBDF75A,
+				B84E86D5DDA1F7F29838A58A,
 				64F80B22B6660579B22DB5F0,
 				692C09CEA95F4C97C95A9697,
 				D4A3AFB2C7978972D1D8D1E3,
@@ -1833,6 +1844,7 @@
 				69C740C8A6F0AF5F36E6FF6D,
 				86E45650E8269331647E2B01,
 				A0891D44FC285C8600C0D209,
+				35CC6FEA96101CE3CBBAD3C0,
 				7782D34793FDDCA1F0711821,
 				01F8ED944C41A6499DD19C29,
 			);
