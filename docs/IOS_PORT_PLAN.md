@@ -134,3 +134,10 @@ iPhoneOS 27.0 SDK（arm64, `-DHAVE_C68K -DTARGET_IOS`）で `clang -fsyntax-only
   - KeyTable の ASCII `':'` と `';'` の割り当てが逆（`':'`→`;+` キー、`';'`→`:*` キー）。
   - macOS 版はホストの SHIFT 状態をそのまま送るため、US 配列で `:` `=` `@` `^` `+` `*` などがずれるはず。
   - macOS 版の F1〜F10（0x163〜0x16c）は KeyTable の空き（NC）を指しているように見える。
+
+### ROM 取り込み（2026-09-25）
+
+- 起動時に IPLROM.DAT / CGROM.DAT が無ければ、macOS 版と同じ `GameViewController.promptForMissingROMFiles` 経路
+  （GameScene の `#if os(macOS) || os(iOS)`）で iOS のドキュメントピッカー（複数選択）を表示。
+  `FileSystem.importROMFiles`（サイズ検証つき）で Documents/MPX68K にコピーし、そのままエミュレータを起動する。
+  足りない ROM やファイル名の誤りは、理由を示して選び直せる。シミュレータで取り込み→起動まで確認。

@@ -859,7 +859,7 @@ class GameScene: SKScene {
         guard let fileSystem = self.fileSystem else {
             fatalError("FileSystem not available")
         }
-#if os(macOS)
+#if os(macOS) || os(iOS)
         let missingROMs = fileSystem.missingROMFilenames()
         if !missingROMs.isEmpty {
             if let controller = GameViewController.shared {

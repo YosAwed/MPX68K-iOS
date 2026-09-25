@@ -45,6 +45,9 @@ final class GameViewController: UIViewController {
     /// SHIFT state as last sent to the X68000.
     private var x68ShiftDown = false
     private weak var bootMediaAlert: UIAlertController?
+    private var documentPickerHandler: DocumentPickerHandler?
+    /// 画面表示前に要求されたダイアログ（viewDidAppear で表示する）
+    private var pendingPresentations: [() -> Void] = []
 
     private static let diskContentTypes: [UTType] = [
         UTType("NANKIN.X68000.1.FDD"),
@@ -96,6 +99,10 @@ final class GameViewController: UIViewController {
         let urls = pendingURLs
         pendingURLs.removeAll()
         urls.forEach(load)
+
+        let presentations = pendingPresentations
+        pendingPresentations.removeAll()
+        presentations.forEach { $0() }
     }
 
     // MARK: - Touch input
@@ -222,9 +229,93 @@ final class GameViewController: UIViewController {
     }
 
     private func presentDiskPicker() {
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: Self.diskContentTypes, asCopy: true)
-        picker.delegate = self
-        picker.allowsMultipleSelection = false
+        presentDocumentPicker(contentTypes: Self.diskContentTypes, allowsMultipleSelection: false) { [weak self] urls in
+            guard let self, let url = urls?.first else { return }
+            self.load(self.importIntoDocuments(url))
+        }
+    }
+
+    // MARK: - ROM files
+
+    /// FileSystem / GameScene から呼ばれる（macOS 版と同じ名前）。足りない ROM を選んでもらい、
+    /// Documents/MPX68K に取り込めたら completion(true)。
+    func promptForMissingROMFiles(_ missing: [String], completion: @escaping (Bool) -> Void) {
+        guard !missing.isEmpty else {
+            completion(true)
+            return
+        }
+        // エミュレータ初期化は画面表示より先に走るため、表示できるまで待つ
+        guard view.window != nil else {
+            pendingPresentations.append { [weak self] in
+                self?.promptForMissingROMFiles(missing, completion: completion)
+            }
+            return
+        }
+
+        let names = missing.joined(separator: " と ")
+        let alert = UIAlertController(
+            title: "ROM ファイルが必要です",
+            message: "\(names) を選択してください。取り込んだファイルは「このiPhone内」→「MPX68K for iOS」→「MPX68K」に保存されます。",
+            preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "ROM ファイルを選択…", style: .default) { [weak self] _ in
+            self?.presentROMPicker(missing, completion: completion)
+        })
+        alert.addAction(UIAlertAction(title: "キャンセル", style: .cancel) { _ in
+            completion(false)
+        })
+        present(alert, animated: true)
+    }
+
+    private func presentROMPicker(_ missing: [String], completion: @escaping (Bool) -> Void) {
+        presentDocumentPicker(contentTypes: [.data], allowsMultipleSelection: true) { [weak self] urls in
+            guard let self else { return }
+            guard let urls, !urls.isEmpty else {
+                completion(false)
+                return
+            }
+            guard let fileSystem = self.gameScene?.fileSystem else {
+                completion(false)
+                return
+            }
+            do {
+                let imported = try fileSystem.importROMFiles(urls, requiredFilenames: missing)
+                let remaining = missing.filter { !imported.contains($0.uppercased()) }
+                if remaining.isEmpty {
+                    completion(true)
+                } else {
+                    self.showROMImportProblem(
+                        "\(remaining.joined(separator: " と ")) がまだ見つかりません。ファイル名が \(remaining.joined(separator: " / ")) になっているか確認してください。",
+                        missing: remaining, completion: completion)
+                }
+            } catch {
+                self.showROMImportProblem(error.localizedDescription, missing: missing, completion: completion)
+            }
+        }
+    }
+
+    private func showROMImportProblem(_ message: String, missing: [String], completion: @escaping (Bool) -> Void) {
+        let alert = UIAlertController(title: "ROM を取り込めませんでした", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "選び直す", style: .default) { [weak self] _ in
+            self?.presentROMPicker(missing, completion: completion)
+        })
+        alert.addAction(UIAlertAction(title: "キャンセル", style: .cancel) { _ in
+            completion(false)
+        })
+        present(alert, animated: true)
+    }
+
+    // MARK: - Document picker
+
+    private func presentDocumentPicker(contentTypes: [UTType], allowsMultipleSelection: Bool,
+                                       completion: @escaping ([URL]?) -> Void) {
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: contentTypes, asCopy: true)
+        picker.allowsMultipleSelection = allowsMultipleSelection
+        let handler = DocumentPickerHandler { [weak self] urls in
+            self?.documentPickerHandler = nil
+            completion(urls)
+        }
+        documentPickerHandler = handler
+        picker.delegate = handler
         present(picker, animated: true)
     }
 
@@ -357,9 +448,19 @@ final class GameViewController: UIViewController {
     }
 }
 
-extension GameViewController: UIDocumentPickerDelegate {
+/// Forwards a document picker's result to a closure (nil when cancelled).
+private final class DocumentPickerHandler: NSObject, UIDocumentPickerDelegate {
+    private let completion: ([URL]?) -> Void
+
+    init(completion: @escaping ([URL]?) -> Void) {
+        self.completion = completion
+    }
+
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-        guard let url = urls.first else { return }
-        load(importIntoDocuments(url))
+        completion(urls)
+    }
+
+    func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+        completion(nil)
     }
 }
