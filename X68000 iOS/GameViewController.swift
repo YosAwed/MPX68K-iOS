@@ -130,6 +130,12 @@ final class GameViewController: UIViewController {
 
     override var canBecomeFirstResponder: Bool { true }
 
+    /// ハードウェアキー入力（pressesBegan）を受けるため first responder になっているが、文字入力欄ではない。
+    /// それでもディスクメニューを開くとシステムがソフトウェアキーボードを出してしまうので、
+    /// 空の inputView を返してキーボードの代わりに何も表示させない（X68000 のキー入力は画面上のキーボードで行う）。
+    private let noSoftwareKeyboard = UIView(frame: .zero)
+    override var inputView: UIView? { noSoftwareKeyboard }
+
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         updateLayoutState()
