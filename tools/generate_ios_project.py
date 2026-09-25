@@ -37,6 +37,7 @@ IOS_SOURCES = [
     f"{IOS_DIR}/iOSKeyMap.swift",
     f"{IOS_DIR}/TouchMouseController.swift",
     f"{IOS_DIR}/VirtualPadView.swift",
+    f"{IOS_DIR}/ScreenLayout.swift",
 ]
 IOS_RESOURCES = [
     f"{IOS_DIR}/Assets.xcassets",

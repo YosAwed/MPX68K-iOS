@@ -147,3 +147,19 @@ iPhoneOS 27.0 SDK（arm64, `-DHAVE_C68K -DTARGET_IOS`）で `clang -fsyntax-only
   （GameScene の `#if os(macOS) || os(iOS)`）で iOS のドキュメントピッカー（複数選択）を表示。
   `FileSystem.importROMFiles`（サイズ検証つき）で Documents/MPX68K にコピーし、そのままエミュレータを起動する。
   足りない ROM やファイル名の誤りは、理由を示して選び直せる。シミュレータで取り込み→起動まで確認。
+
+### Phase 3: 折り目対応レイアウト（2026-09-25）
+
+- Xcode 27.1 beta（27A9269, iOS 27.1 SDK）の iPhone Duo シミュレータで動作確認。
+  外側（閉）・内側（全開）とも全画面で動作。Device Hub の開閉操作はシミュレータ上でのみ可能（simctl 不可）。
+- 画面構成: `GameViewController` を入れ物にし、`ScreenViewController`（SKView をシーンの縦横比で safe area に
+  aspect-fit）と `ControlPanelViewController`（仮想パッド・モード切替・トラックパッド、タッチ透過）に分離。
+  共有の GameScene は固定サイズのまま。
+- iOS 27.1 以降は `UIArrangementViewController` の overlay 配置（primary＝操作パネル、secondary＝画面）。
+  閉・全開では画面の上に操作パネルが重なり、半開きでは画面が上／前側、操作パネルが下／後側に分かれる。
+  半開きかつマウスモードでは操作パネル側にトラックパッド面を表示。
+  SDK 27.0 でもビルドできるよう `#if canImport(UIKit.UIArrangementViewController)` で囲み、
+  27.1 未満の実行時は単純な重ね表示にフォールバック。
+- 確認済み: ノート PC 持ち（横の折り目）の半開きで、上に X68000 画面・下にトラックパッド。
+- 既知: 閉じた状態で上下逆さの縦向きにしてもアプリの向きが変わらない（システムがアプリシーンを
+  portraitUpsideDown に回さない。キーボード用シーンだけ回る）。Info.plist には追加済み。OS の仕様とみて現状維持。

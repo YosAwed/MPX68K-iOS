@@ -34,6 +34,15 @@ final class GameViewController: UIViewController {
     private var touchMouse: TouchMouseController?
     private let virtualPad = VirtualPadView()
     private let inputModeButton = UIButton(type: .system)
+    private let trackpad = TrackpadSurfaceView()
+
+    // MARK: Layout
+    private let screenController = ScreenViewController()
+    private let controlPanel = ControlPanelViewController()
+    /// iPhone Duo partially folded: the control panel has its own side of the fold.
+    private var isSplit = false {
+        didSet { if isSplit != oldValue { applyInputMode() } }
+    }
     private var inputMode: InputMode = .mouse {
         didSet { applyInputMode() }
     }
@@ -55,7 +64,7 @@ final class GameViewController: UIViewController {
     ].compactMap { $0 }
 
     override func loadView() {
-        view = SKView(frame: .zero)
+        view = UIView(frame: .zero)
     }
 
     override func viewDidLoad() {
@@ -63,7 +72,9 @@ final class GameViewController: UIViewController {
         GameViewController.shared = self
         view.backgroundColor = .black
 
-        guard let skView = view as? SKView else { return }
+        setUpLayout()
+
+        let skView = screenController.skView
         skView.ignoresSiblingOrder = true
         skView.isMultipleTouchEnabled = true
         #if DEBUG
@@ -73,6 +84,7 @@ final class GameViewController: UIViewController {
 
         let scene = GameScene.newGameScene()
         gameScene = scene
+        screenController.setAspectRatio(scene.size)
         skView.presentScene(scene)
         // GameScene.sks は macOS 版と共有しているため、タイトルの表記だけ差し替える
         scene.enumerateChildNodes(withName: "//*") { node, _ in
@@ -92,8 +104,19 @@ final class GameViewController: UIViewController {
             name: .diskImageLoaded, object: nil)
     }
 
+    override var canBecomeFirstResponder: Bool { true }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // Overlaid, the panel covers the screen; split by the fold, they don't overlap.
+        let panelFrame = controlPanel.view.convert(controlPanel.view.bounds, to: view)
+        let screenFrame = screenController.view.convert(screenController.view.bounds, to: view)
+        isSplit = !panelFrame.intersects(screenFrame.insetBy(dx: 1, dy: 1))
+    }
+
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        becomeFirstResponder()
         // シーン内の入力モード表示は macOS 向け。iOS では右上のボタンで切り替える。
         gameScene?.childNode(withName: "//InputModeButton")?.removeFromParent()
         let urls = pendingURLs
@@ -107,28 +130,67 @@ final class GameViewController: UIViewController {
 
     // MARK: - Touch input
 
+    private func setUpLayout() {
+        let container: UIViewController
+        #if canImport(UIKit.UIArrangementViewController)
+        if #available(iOS 27.1, *) {
+            // Overlay arrangement: the primary (controls) sits on top of the secondary
+            // (screen); when partially folded they move to either side of the fold.
+            let arrangement = UIArrangementViewController()
+            arrangement.setViewController(controlPanel, for: .primary)
+            arrangement.setViewController(screenController, for: .secondary)
+            arrangement.updateArrangement(.overlay)
+            container = arrangement
+        } else {
+            container = OverlayContainerViewController(screen: screenController, controls: controlPanel)
+        }
+        #else
+        container = OverlayContainerViewController(screen: screenController, controls: controlPanel)
+        #endif
+
+        addChild(container)
+        container.view.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(container.view)
+        NSLayoutConstraint.activate([
+            container.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            container.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            container.view.topAnchor.constraint(equalTo: view.topAnchor),
+            container.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+        container.didMove(toParent: self)
+    }
+
     private func setUpTouchInput(on skView: SKView) {
         touchMouse = TouchMouseController(view: skView) { [weak self] in self?.gameScene }
+        touchMouse?.addSurface(trackpad)
 
+        let panel = controlPanel.view!
         virtualPad.translatesAutoresizingMaskIntoConstraints = false
         virtualPad.onChange = { bits in
             X68000_Joystick_Set(0, bits)
         }
-        view.addSubview(virtualPad)
+        trackpad.translatesAutoresizingMaskIntoConstraints = false
+        panel.addSubview(trackpad)
+        panel.addSubview(virtualPad)
 
         inputModeButton.translatesAutoresizingMaskIntoConstraints = false
         inputModeButton.tintColor = UIColor.white.withAlphaComponent(0.8)
         inputModeButton.backgroundColor = UIColor.white.withAlphaComponent(0.12)
         inputModeButton.layer.cornerRadius = 22
         inputModeButton.addTarget(self, action: #selector(toggleInputMode), for: .touchUpInside)
-        view.addSubview(inputModeButton)
+        panel.addSubview(inputModeButton)
 
-        let guide = view.safeAreaLayoutGuide
+        let guide = panel.safeAreaLayoutGuide
         NSLayoutConstraint.activate([
-            virtualPad.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            virtualPad.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            virtualPad.topAnchor.constraint(equalTo: view.topAnchor),
-            virtualPad.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            virtualPad.leadingAnchor.constraint(equalTo: panel.leadingAnchor),
+            virtualPad.trailingAnchor.constraint(equalTo: panel.trailingAnchor),
+            virtualPad.topAnchor.constraint(equalTo: panel.topAnchor),
+            virtualPad.bottomAnchor.constraint(equalTo: panel.bottomAnchor),
+
+            trackpad.leadingAnchor.constraint(equalTo: guide.leadingAnchor, constant: 16),
+            trackpad.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -16),
+            trackpad.topAnchor.constraint(equalTo: inputModeButton.bottomAnchor, constant: 12),
+            trackpad.bottomAnchor.constraint(equalTo: guide.bottomAnchor, constant: -16),
 
             inputModeButton.widthAnchor.constraint(equalToConstant: 44),
             inputModeButton.heightAnchor.constraint(equalToConstant: 44),
@@ -151,6 +213,8 @@ final class GameViewController: UIViewController {
         if !isPad {
             virtualPad.releaseAll()
         }
+        // The trackpad panel only appears on its own side of the fold.
+        trackpad.isHidden = isPad || !isSplit
         // ボタンには「切り替え先」を表示する
         let symbol = isPad ? "cursorarrow" : "gamecontroller"
         inputModeButton.setImage(UIImage(systemName: symbol), for: .normal)
@@ -467,5 +531,32 @@ private final class DocumentPickerHandler: NSObject, UIDocumentPickerDelegate {
 
     func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
         completion(nil)
+    }
+}
+
+/// Pre-iOS 27.1 layout: the controls simply lie on top of the screen.
+private final class OverlayContainerViewController: UIViewController {
+    private let screen: UIViewController
+    private let controls: UIViewController
+
+    init(screen: UIViewController, controls: UIViewController) {
+        self.screen = screen
+        self.controls = controls
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        for child in [screen, controls] {
+            addChild(child)
+            child.view.frame = view.bounds
+            child.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            view.addSubview(child.view)
+            child.didMove(toParent: self)
+        }
     }
 }

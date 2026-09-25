@@ -32,11 +32,16 @@ final class TouchMouseController: NSObject, UIGestureRecognizerDelegate {
         }
     }
 
+    /// `view` is the emulator screen; it is used as a touch surface and for scaling.
     init(view: SKView, scene: @escaping () -> GameScene?) {
         self.view = view
         self.sceneProvider = scene
         super.init()
+        addSurface(view)
+    }
 
+    /// Adds the trackpad gestures to another view (e.g. a trackpad panel).
+    func addSurface(_ surface: UIView) {
         let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
         pan.maximumNumberOfTouches = 1
         pan.delegate = self
@@ -53,11 +58,12 @@ final class TouchMouseController: NSObject, UIGestureRecognizerDelegate {
 
         let hover = UIHoverGestureRecognizer(target: self, action: #selector(handleHover(_:)))
 
-        recognizers = [pan, tap, twoFingerTap, longPress, hover]
-        recognizers.forEach {
+        for recognizer in [pan, tap, twoFingerTap, longPress, hover] as [UIGestureRecognizer] {
             // Let the scene keep receiving touches (CRT overlay etc.)
-            $0.cancelsTouchesInView = false
-            view.addGestureRecognizer($0)
+            recognizer.cancelsTouchesInView = false
+            recognizer.isEnabled = isEnabled
+            surface.addGestureRecognizer(recognizer)
+            recognizers.append(recognizer)
         }
     }
 
@@ -102,7 +108,7 @@ final class TouchMouseController: NSObject, UIGestureRecognizerDelegate {
     // MARK: - Gestures
 
     @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
-        let translation = gesture.translation(in: view)
+        let translation = gesture.translation(in: gesture.view)
         switch gesture.state {
         case .began:
             lastPanTranslation = translation
@@ -139,7 +145,7 @@ final class TouchMouseController: NSObject, UIGestureRecognizerDelegate {
     }
 
     @objc private func handleHover(_ gesture: UIHoverGestureRecognizer) {
-        let location = gesture.location(in: view)
+        let location = gesture.location(in: gesture.view)
         switch gesture.state {
         case .began:
             lastHoverLocation = location
