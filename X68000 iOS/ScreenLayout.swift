@@ -18,14 +18,25 @@ final class ScreenViewController: UIViewController {
     private var aspectConstraint: NSLayoutConstraint?
     private var centerYConstraint: NSLayoutConstraint?
     private var topConstraint: NSLayoutConstraint?
+    private var widthConstraints: [NSLayoutConstraint] = []
+
+    /// Keeps the top corners of the screen clear of the display's rounded corners.
+    private static let topAlignedInset: CGFloat = 12
 
     /// Pin the screen to the top of the safe area (portrait, controls below) instead of centring it.
     var alignsToTop = false {
         didSet {
             guard alignsToTop != oldValue, isViewLoaded else { return }
-            centerYConstraint?.isActive = !alignsToTop
-            topConstraint?.isActive = alignsToTop
+            applyAlignment()
         }
+    }
+
+    private func applyAlignment() {
+        centerYConstraint?.isActive = !alignsToTop
+        topConstraint?.isActive = alignsToTop
+        let inset = alignsToTop ? Self.topAlignedInset : 0
+        topConstraint?.constant = inset
+        widthConstraints.forEach { $0.constant = -2 * inset }
     }
 
     override func viewDidLoad() {
@@ -38,15 +49,16 @@ final class ScreenViewController: UIViewController {
         let guide = view.safeAreaLayoutGuide
         let fillWidth = skView.widthAnchor.constraint(equalTo: guide.widthAnchor)
         fillWidth.priority = .defaultHigh
+        let maxWidth = skView.widthAnchor.constraint(lessThanOrEqualTo: guide.widthAnchor)
+        widthConstraints = [fillWidth, maxWidth]
         let fillHeight = skView.heightAnchor.constraint(equalTo: guide.heightAnchor)
         fillHeight.priority = .defaultHigh
         centerYConstraint = skView.centerYAnchor.constraint(equalTo: guide.centerYAnchor)
         topConstraint = skView.topAnchor.constraint(equalTo: guide.topAnchor)
-        centerYConstraint?.isActive = !alignsToTop
-        topConstraint?.isActive = alignsToTop
+        applyAlignment()
         NSLayoutConstraint.activate([
             skView.centerXAnchor.constraint(equalTo: guide.centerXAnchor),
-            skView.widthAnchor.constraint(lessThanOrEqualTo: guide.widthAnchor),
+            maxWidth,
             skView.heightAnchor.constraint(lessThanOrEqualTo: guide.heightAnchor),
             fillWidth,
             fillHeight,
