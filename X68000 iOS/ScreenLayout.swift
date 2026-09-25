@@ -77,44 +77,63 @@ final class ScreenViewController: UIViewController {
         ])
     }
 
-    /// The screen's untransformed frame (`frame` is not valid while the power effect scales it).
-    private var screenRect: CGRect {
-        CGRect(x: skView.center.x - skView.bounds.width / 2,
-               y: skView.center.y - skView.bounds.height / 2,
-               width: skView.bounds.width, height: skView.bounds.height)
-    }
-
-    private func placeFlash() {
-        flash.bounds = skView.bounds
-        flash.center = skView.center
-    }
+    /// Clips the screen during the CRT effect. The picture itself is never scaled
+    /// (scaling the Metal-backed SKView resamples it and looks blurred).
+    private let crtMask = UIView()
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        bezel.screenFrame = screenRect
-        placeFlash()
+        bezel.screenFrame = skView.frame
+        if isPoweredOn && skView.mask == nil {
+            flash.frame = skView.frame
+        }
     }
 
     // MARK: - CRT power effect
 
-    /// Collapses the screen to a horizontal line, then a dot, like a CRT switching off.
+    private enum BeamShape { case full, line, dot }
+
+    /// The visible part of the screen for a beam shape, in the SKView's coordinates.
+    private func beamRect(_ shape: BeamShape) -> CGRect {
+        let bounds = skView.bounds
+        switch shape {
+        case .full:
+            return bounds
+        case .line:
+            return CGRect(x: bounds.minX, y: bounds.midY - 1, width: bounds.width, height: 2)
+        case .dot:
+            return CGRect(x: bounds.midX - 3, y: bounds.midY - 1, width: 6, height: 2)
+        }
+    }
+
+    private func setBeam(_ shape: BeamShape) {
+        let rect = beamRect(shape)
+        crtMask.frame = rect
+        flash.frame = rect.offsetBy(dx: skView.frame.minX, dy: skView.frame.minY)
+    }
+
+    private func beginEffect(from shape: BeamShape) {
+        skView.layer.removeAllAnimations()
+        crtMask.layer.removeAllAnimations()
+        flash.layer.removeAllAnimations()
+        crtMask.backgroundColor = .white
+        skView.mask = crtMask
+        setBeam(shape)
+    }
+
+    /// Collapses the picture to a bright horizontal line, then a dot, like a CRT switching off.
     func powerOff() {
         guard isPoweredOn else { return }
         isPoweredOn = false
-        placeFlash()
-        flash.transform = .identity
-        UIView.animateKeyframes(withDuration: 0.35, delay: 0, options: [.calculationModeCubic]) {
-            UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.5) {
-                let line = CGAffineTransform(scaleX: 1, y: 0.008)
-                self.skView.transform = line
-                self.flash.transform = line
+        beginEffect(from: .full)
+        flash.alpha = 0
+        UIView.animateKeyframes(withDuration: 0.35, delay: 0, options: [.calculationModeLinear]) {
+            UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.55) {
+                self.setBeam(.line)
                 self.flash.alpha = 0.9
             }
-            UIView.addKeyframe(withRelativeStartTime: 0.5, relativeDuration: 0.5) {
-                let dot = CGAffineTransform(scaleX: 0.02, y: 0.008)
-                self.skView.transform = dot
-                self.flash.transform = dot
-                self.skView.alpha = 0
+            UIView.addKeyframe(withRelativeStartTime: 0.55, relativeDuration: 0.45) {
+                self.setBeam(.dot)
                 self.flash.alpha = 0
             }
         }
@@ -124,22 +143,20 @@ final class ScreenViewController: UIViewController {
     func powerOn() {
         guard !isPoweredOn else { return }
         isPoweredOn = true
-        placeFlash()
-        let dot = CGAffineTransform(scaleX: 0.02, y: 0.008)
-        skView.transform = dot
-        flash.transform = dot
+        beginEffect(from: .dot)
         flash.alpha = 1
-        skView.alpha = 1
-        UIView.animateKeyframes(withDuration: 0.45, delay: 0, options: [.calculationModeCubic]) {
+        UIView.animateKeyframes(withDuration: 0.45, delay: 0, options: [.calculationModeLinear]) {
             UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.35) {
-                let line = CGAffineTransform(scaleX: 1, y: 0.008)
-                self.skView.transform = line
-                self.flash.transform = line
+                self.setBeam(.line)
             }
             UIView.addKeyframe(withRelativeStartTime: 0.35, relativeDuration: 0.65) {
-                self.skView.transform = .identity
-                self.flash.transform = .identity
+                self.setBeam(.full)
                 self.flash.alpha = 0
+            }
+        } completion: { _ in
+            if self.isPoweredOn {
+                self.skView.mask = nil
+                self.flash.frame = self.skView.frame
             }
         }
     }
@@ -147,13 +164,11 @@ final class ScreenViewController: UIViewController {
     /// Shows the picture immediately (e.g. after moving to the outer display).
     func resetPower() {
         isPoweredOn = true
-        skView.layer.removeAllAnimations()
+        crtMask.layer.removeAllAnimations()
         flash.layer.removeAllAnimations()
-        skView.transform = .identity
-        skView.alpha = 1
-        flash.transform = .identity
+        skView.mask = nil
         flash.alpha = 0
-        placeFlash()
+        flash.frame = skView.frame
     }
 
     /// Keeps the SKView at the scene's aspect ratio so the aspect-fit scene fills it.
