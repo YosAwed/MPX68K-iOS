@@ -130,10 +130,16 @@ iPhoneOS 27.0 SDK（arm64, `-DHAVE_C68K -DTARGET_IOS`）で `clang -fsyntax-only
   US 配列・JIS 配列どちらのホストキーボードでも刻印どおりに入力できる（記号・大小文字を Human68k で確認）。
   特殊キー（矢印・F1〜F10・Ctrl・Caps・テンキー等）は KeyTable 拡張領域の位置で送る。SHIFT キー自体は押下中そのまま送る。
   - F1〜F10 は KeyTable の f.1〜f.10（0x1be〜0x1c7）を使用。未検証（シミュレータから送れない）。
-- upstream（macOS 版）への報告候補:
-  - KeyTable の ASCII `':'` と `';'` の割り当てが逆（`':'`→`;+` キー、`';'`→`:*` キー）。
-  - macOS 版はホストの SHIFT 状態をそのまま送るため、US 配列で `:` `=` `@` `^` `+` `*` などがずれるはず。
+- 共有コードで修正済み（macOS 版にも効く）:
+  - KeyTable の ASCII 割り当て: `'` を `0x6d`（電卓が出る）→ 7 キー、`:` `*` → `:*` キー、`;` `+` → `;+` キー。
+  - 画面上ジョイカード（`X68JoyCard`）の A/B を規格どおりに（A＝トリガー A）。
+  - macOS 版で JIS の ¥ キー（ASCII 外）が送られなかった問題（kVK_JIS_Yen → `\` の KeyTable）。
+  - 常時有効だったコアのファイルログ（`winx68k.cpp` の `DebugLog` / `X68000_AppendSCSILog`）を
+    `MPX68K_ENABLE_RUNTIME_FILE_LOGS`（既定 0）で無効化。
+  - 未使用の swift-crypto 依存を `X68000.xcodeproj` から削除（Xcode 27.0 でビルド不能だった）。
+- macOS 版の残課題（方針: US 配列での記号ずれは現状維持）:
   - macOS 版の F1〜F10（0x163〜0x16c）は KeyTable の空き（NC）を指しているように見える。
+  - macOS 版 `AppDelegate.appendSCSILog` / `resetSCSILogs` も Documents/MPX68K と /tmp にログを常時書く。
 
 ### ROM 取り込み（2026-09-25）
 
