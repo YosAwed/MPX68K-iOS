@@ -50,6 +50,12 @@ final class GameViewController: UIViewController {
         let scene = GameScene.newGameScene()
         gameScene = scene
         skView.presentScene(scene)
+        // GameScene.sks は macOS 版と共有しているため、タイトルの表記だけ差し替える
+        scene.enumerateChildNodes(withName: "//*") { node, _ in
+            if let label = node as? SKLabelNode, label.text == "for macOS" {
+                label.text = "for iOS"
+            }
+        }
 
         NotificationCenter.default.addObserver(
             self, selector: #selector(diskImageLoadFinished(_:)),
