@@ -76,7 +76,39 @@ final class SC55Synthesizer {
         engine.attach(player)
         engine.connect(player, to: engine.mainMixerNode, format: format)
         engine.mainMixerNode.outputVolume = Float(volume)
+        #if os(iOS)
+        // iOS stops the engine on an audio configuration change (the audio session being
+        // configured or activated after start, a route change) and on interruptions.
+        // Restart output so the SC-55 does not go silent while MIDI keeps being sent.
+        NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil) { [weak self] _ in
+            self?.worker.async { self?.restartOutputOnWorker(reason: "configuration change") }
+        }
+        NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification, object: nil, queue: nil) { [weak self] note in
+            guard let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  AVAudioSession.InterruptionType(rawValue: raw) == .ended else { return }
+            self?.worker.async { self?.restartOutputOnWorker(reason: "interruption ended") }
+        }
+        #endif
     }
+
+    #if os(iOS)
+    private func restartOutputOnWorker(reason: String) {
+        guard running else { return }
+        do {
+            if !engine.isRunning { try engine.start() }
+            // Buffers queued on the stopped player are gone; start a fresh chain.
+            generation += 1
+            player.stop()
+            for buffer in audioBuffers { scheduleBuffer(buffer, generation: generation) }
+            player.play()
+            warningLog("SC-55 output restarted (\(reason))", category: .audio)
+        } catch {
+            fail("SC-55の音声出力を再開できませんでした: \(error.localizedDescription)")
+        }
+    }
+    #endif
 
     static let requiredROMs: [(String, Set<Int>)] = [
         ("sc55_rom1.bin", [0x8000]),
