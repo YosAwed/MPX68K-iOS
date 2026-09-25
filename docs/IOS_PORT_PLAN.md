@@ -38,8 +38,24 @@ Shared 配下に macOS 専用ファイルはないが、以下の修正が必要
 
 ### コア（C/C++）
 
+iPhoneOS 27.0 SDK（arm64, `-DHAVE_C68K -DTARGET_IOS`）で `clang -fsyntax-only` を実施し、失敗は以下 2 ファイルのみ。
+
 - `px68k/x68k/scsi.c` : `#ifdef __APPLE__` で `<IOKit/usb/IOUSBLib.h>` を include → iOS SDK に存在しない。
   `TARGET_OS_OSX` ガードに変更（SCSI-U は iOS 非対応）。
+- `px68k/x68k/ppi.c:21-27` : IOKit USB/シリアルヘッダを無条件 include（JoyportU）。`pia.c` / `winx68k.cpp` から
+  `PPI_*` が呼ばれるため除外不可 → `TARGET_OS_OSX` でガードし iOS ではスタブ化。
+- iOS ターゲットのプリプロセッサ定義は `HAVE_C68K, C68K_NO_JUMP_TABLE, TARGET_IOS`、リンクは `-lc68k`。
+  （macOS 側の `TARGET_MACOS` はコア内で参照されていない。XDF/DIM/SASI は `TARGET_IOS` でメモリバッファ経由の読み込み）
+- D88 は旧 iOS 版にあった `TARGET_IOS` のメモリバッファ読み込みが消え、パスを `fopen` する方式。
+  iOS ではサンドボックス内にコピーしたパスを渡す。
+- `X68000_GetImage` は再描画が無いフレームでは何もしない。Swift 側は永続バッファを保持し
+  `X68000_GetFrameInfo` / `X68000_GetImageInto` を使う（最大 1024×1024）。
+- 常時有効のファイルログ（`winx68k.cpp` の `DebugLog` → `/tmp`、`X68000_AppendSCSILog` → `$HOME/Documents/MPX68K/`）は
+  iOS では Documents にゴミを出しうるため無効化する。
+- `scc.c` の `/dev/ptmx`、`winx68k.cpp` の Monitor UNIX ソケットは iOS では使わない（TCP シリアルのみ検討）。
+- `fmgen_simd.h` は arm64 で NEON に分岐済み。`*_optimized*` ファイルはプロジェクト外のデッドコード。
+- 旧 X68iOS の画像リソース（`JoyCardLeft.png` / `JoyCardStick.png` / `X68000LogoW.png` / `X68000Mouse.png`）は
+  MPX68K で削除済みなので、`68a0c0c` から復元する。
 - SC-55（Nuked-SC55, `SC55/core`）は SDL 非依存化済みで iOS でもそのままビルド可能見込み。Debug でも `-O2`。
 - ブリッジングヘッダは新コアの API（`X68000_GetImageInto` / `X68000_GetFrameInfo` / `X68000_IsFrameDirty` /
   `X68000_Mouse_Event` / `SCC_*` / `X68000_SCSI_*` / `X68000_Monitor_*` 等）を使うこと。
