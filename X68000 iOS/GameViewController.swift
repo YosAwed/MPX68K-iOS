@@ -209,6 +209,12 @@ final class GameViewController: UIViewController {
     }
 
     #if DEBUG
+    /// Command-Shift-P also previews the CRT effect (easier than three fingers in the simulator).
+    override var keyCommands: [UIKeyCommand]? {
+        [UIKeyCommand(title: "CRT 電源演出", action: #selector(toggleCRTPreview),
+                      input: "p", modifierFlags: [.command, .shift])]
+    }
+
     @objc private func toggleCRTPreview() {
         if screenController.isPoweredOn {
             screenController.powerOff()
