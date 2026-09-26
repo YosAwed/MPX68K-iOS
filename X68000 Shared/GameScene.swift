@@ -570,7 +570,7 @@ class GameScene: SKScene {
     
     // MARK: - System Management
     func resetSystem() {
-        midiController.resetInternalSC55()
+        midiController.resetInternalSynth()
         infoLog("GameScene.resetSystem() called - performing manual reset", category: .emulation)
         // Persist SRAM before reset so SWITCH changes survive disk swaps/resets.
         fileSystem?.saveSRAM()
@@ -1194,13 +1194,13 @@ class GameScene: SKScene {
     }
     
     func applicationWillResignActive() {
-        SC55Synthesizer.shared.setPaused(true)
+        midiController.setInternalSynthPaused(true)
         // Pause audio to prevent underruns when app is inactive
         audioStream?.pause()
     }
     
     func applicationDidBecomeActive() {
-        SC55Synthesizer.shared.setPaused(false)
+        midiController.setInternalSynthPaused(false)
         // Resume audio when app becomes active
         audioStream?.play()
     }

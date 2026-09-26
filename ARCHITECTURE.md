@@ -374,6 +374,31 @@ Non-sandboxed development builds can store an ordinary folder bookmark if creati
 of a security-scoped bookmark is unavailable. The saved bookmark kind determines
 resolution options; ordinary bookmarks grant no additional filesystem access.
 
+## Internal MT-32 MIDI destination
+
+`MT32Synthesizer` is the second internal module (Munt libmt32emu 2.8.3 through
+`MT32Bridge.h`). It follows the SC-55 design: one instance on a serial worker,
+its own AVAudioEngine, three reusable 512-frame buffers, arrival deadlines checked
+before each buffer, generation tokens, and iOS restart after configuration changes
+and interruptions. It renders at 48 kHz (`AnalogOutputMode_ACCURATE`) and needs no
+firmware warmup. Munt parses the byte stream itself, so the 1 KiB chunks produced by
+`SC55MIDIEventQueue` are reassembled, and its event queue is sized so it cannot
+overflow within one period.
+
+ROMs are found by content, not by name: every plausibly sized file in the folder is
+identified by SHA-1 (cached per path, size and modification date), and the preferred
+compatible control + PCM pair is loaded (MT-32 v1.07, other MT-32, CM-32L).
+
+`MIDIController.activeInternalSynth` (`.sc55`, `.mt32` or `nil` for CoreMIDI) selects
+the route; only one module runs, and starting one stops the other. Both conform to
+`InternalMIDISynthesizer` (volume, send, reset, stop, pause), which the menus use.
+macOS keeps a bookmark and an enabled flag per module (`MT32ROMFolderBookmark`,
+`MT32InternalEnabled`); iOS stores the menu choice in `ios_midi_output`
+(`automatic`, `sc55`, `mt32`, `external`; the former `ios_sc55_preferred` Bool is
+migrated). Automatic uses the SC-55 if its ROMs are present, then the MT-32.
+MT-32 volume is persisted as `MT32OutputVolume`. `make -C tests/mt32` runs the
+ROM-free bridge tests.
+
 SC-55 output volume is a persisted 0–1 host mixer gain (`SC55OutputVolume`),
 applied on the audio worker. A modeless panel updates it continuously without
 pausing emulation. Firmware MIDI volume, OPM/ADPCM and system volume are independent.

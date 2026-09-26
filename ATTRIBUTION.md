@@ -66,3 +66,18 @@ provenance of the third-party code vendored in this repository.
 - **Modifications (2026-09-07)**: headless host API, SDL removal, bounded MIDI and
   rendering, complete reset support. See the component README for details.
 - No Roland firmware, wave ROMs, artwork or standalone front-panel assets are included.
+
+## Munt libmt32emu — internal MT-32 sound module
+
+- **Location**: `X68000 Shared/MT32/mt32emu/`
+- **Upstream**: https://github.com/munt/munt (`mt32emu/`)
+- **Revision**: tag `libmt32emu_2_8_3` (`3b05ec276f9e605af86b0eaef7f5eda43477a31f`)
+- **Authors**: Copyright (C) 2003–2009 Dean Beeler, Jerome Fisher; 2011–2026 Dean
+  Beeler, Jerome Fisher, Sergey V. Mikayev (see `X68000 Shared/MT32/AUTHORS.txt`).
+- **License**: GNU Lesser General Public License, version 2.1 or later; full text in
+  `X68000 Shared/MT32/COPYING.LESSER.txt`. It is combined here with the GPL-2.0
+  application, which LGPL-2.1 permits.
+- **Modifications**: none to the library sources. Only the files needed by the C++
+  API are vendored; `config.h` is written by hand in place of the CMake-generated one.
+  `X68000 Shared/MT32/MT32Bridge.cpp` is MPX68K's own headless adapter.
+- No Roland ROMs are included.

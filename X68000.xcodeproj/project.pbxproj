@@ -96,6 +96,28 @@
 		4FAB13001B3FF6F5A38E0C15 /* mcu_timer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 42B05041DA884D8227AB33B9 /* mcu_timer.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
 		89488EEEB3E26D31F19962AC /* pcm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 82E8B7C0D87A1C70AD5CFA07 /* pcm.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
 		F5D8EC3483043D3A68675204 /* submcu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C4D5CB257320BD46BF1A9F41 /* submcu.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
+		12EE5D1B9B926EE6E51A40C4 /* MT32Synthesizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B746115288B490E7F55CE19B /* MT32Synthesizer.swift */; };
+		D9CE45E966DEBFB9D03BA3DF /* MT32Bridge.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8460D096E96DC2E532BF80E2 /* MT32Bridge.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
+		86BE58F3974E17EF3519EB78 /* Analog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5A638558DC34995D7B2F7CE1 /* Analog.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
+		2528FFA123531AC3C0B1804F /* BReverbModel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AC52A28E81A63EE45602880C /* BReverbModel.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
+		5D7A77F6DAC91C478999DE25 /* Display.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 50FF2493AEE3FD3A7F07747C /* Display.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
+		EAD11D38D3AC3F998CA38F4D /* File.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C0F1B69ED9636B3421EF440B /* File.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
+		95739DD8BAC4B1A449EB25DA /* FileStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 253DF0F9624766E3136CB975 /* FileStream.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
+		69E95BBA77D346CDB35C4CC1 /* LA32FloatWaveGenerator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 953DEDB3126E39CD5579DA43 /* LA32FloatWaveGenerator.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
+		CF167A26DA5B943F8C27AE02 /* LA32Ramp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E4D1587B6229FE96E56C322D /* LA32Ramp.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
+		B369B15F5E16920F0D369E51 /* LA32WaveGenerator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = EF78EEB7F3232FD1C635119F /* LA32WaveGenerator.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
+		BC6435E20C37183630F996EF /* MidiStreamParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D426423981F059667D754BBC /* MidiStreamParser.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
+		8DBDCEB7B0909D2B33EF71B9 /* Part.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7655CE035BED7C858EADA873 /* Part.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
+		CBBE3FF0AB15AF4A90F1D58F /* Partial.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ADB53C3396A5AEE9768FAF41 /* Partial.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
+		719FBDB0FEAEC6D01B982CFE /* PartialManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 490950A75F386065EA8EA8AF /* PartialManager.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
+		1358C024F71D36EBDCE6A12D /* Poly.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE5EF98976F91CA9E8C65D33 /* Poly.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
+		8E42C7787C288DC0915DA274 /* ROMInfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5810E5C8283097FEF13FF539 /* ROMInfo.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
+		31062A0F4B8907159730FF6B /* Synth.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8B0D17BFFD7EBAAB6A35BDF6 /* Synth.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
+		06F56D981823C059763CD4AC /* TVA.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4B5DD3AAA79301F6D281713B /* TVA.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
+		ED3A899B6DB26806E8990EE0 /* TVF.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6216655C02E7D6C0A2067E3B /* TVF.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
+		CA74000FEE6DB5F0EF6202F7 /* TVP.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 08C4B9DBCC15F48C1B1D6727 /* TVP.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
+		19DBA6FB89BDF95509414E2A /* Tables.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 535A65B63654A73CD3611471 /* Tables.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
+		477C834ECA9EB1868C4D4A68 /* sha1.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3CD3683B41219EBE0A90F7E4 /* sha1.cpp */; settings = {COMPILER_FLAGS = "-O2"; }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -283,6 +305,28 @@
 		42B05041DA884D8227AB33B9 /* mcu_timer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "SC55/core/mcu_timer.cpp"; sourceTree = "<group>"; };
 		82E8B7C0D87A1C70AD5CFA07 /* pcm.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "SC55/core/pcm.cpp"; sourceTree = "<group>"; };
 		C4D5CB257320BD46BF1A9F41 /* submcu.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "SC55/core/submcu.cpp"; sourceTree = "<group>"; };
+		B746115288B490E7F55CE19B /* MT32Synthesizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MT32/MT32Synthesizer.swift"; sourceTree = "<group>"; };
+		8460D096E96DC2E532BF80E2 /* MT32Bridge.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "MT32/MT32Bridge.cpp"; sourceTree = "<group>"; };
+		5A638558DC34995D7B2F7CE1 /* Analog.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "MT32/mt32emu/Analog.cpp"; sourceTree = "<group>"; };
+		AC52A28E81A63EE45602880C /* BReverbModel.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "MT32/mt32emu/BReverbModel.cpp"; sourceTree = "<group>"; };
+		50FF2493AEE3FD3A7F07747C /* Display.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "MT32/mt32emu/Display.cpp"; sourceTree = "<group>"; };
+		C0F1B69ED9636B3421EF440B /* File.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "MT32/mt32emu/File.cpp"; sourceTree = "<group>"; };
+		253DF0F9624766E3136CB975 /* FileStream.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "MT32/mt32emu/FileStream.cpp"; sourceTree = "<group>"; };
+		953DEDB3126E39CD5579DA43 /* LA32FloatWaveGenerator.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "MT32/mt32emu/LA32FloatWaveGenerator.cpp"; sourceTree = "<group>"; };
+		E4D1587B6229FE96E56C322D /* LA32Ramp.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "MT32/mt32emu/LA32Ramp.cpp"; sourceTree = "<group>"; };
+		EF78EEB7F3232FD1C635119F /* LA32WaveGenerator.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "MT32/mt32emu/LA32WaveGenerator.cpp"; sourceTree = "<group>"; };
+		D426423981F059667D754BBC /* MidiStreamParser.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "MT32/mt32emu/MidiStreamParser.cpp"; sourceTree = "<group>"; };
+		7655CE035BED7C858EADA873 /* Part.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "MT32/mt32emu/Part.cpp"; sourceTree = "<group>"; };
+		ADB53C3396A5AEE9768FAF41 /* Partial.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "MT32/mt32emu/Partial.cpp"; sourceTree = "<group>"; };
+		490950A75F386065EA8EA8AF /* PartialManager.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "MT32/mt32emu/PartialManager.cpp"; sourceTree = "<group>"; };
+		FE5EF98976F91CA9E8C65D33 /* Poly.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "MT32/mt32emu/Poly.cpp"; sourceTree = "<group>"; };
+		5810E5C8283097FEF13FF539 /* ROMInfo.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "MT32/mt32emu/ROMInfo.cpp"; sourceTree = "<group>"; };
+		8B0D17BFFD7EBAAB6A35BDF6 /* Synth.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "MT32/mt32emu/Synth.cpp"; sourceTree = "<group>"; };
+		4B5DD3AAA79301F6D281713B /* TVA.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "MT32/mt32emu/TVA.cpp"; sourceTree = "<group>"; };
+		6216655C02E7D6C0A2067E3B /* TVF.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "MT32/mt32emu/TVF.cpp"; sourceTree = "<group>"; };
+		08C4B9DBCC15F48C1B1D6727 /* TVP.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "MT32/mt32emu/TVP.cpp"; sourceTree = "<group>"; };
+		535A65B63654A73CD3611471 /* Tables.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "MT32/mt32emu/Tables.cpp"; sourceTree = "<group>"; };
+		3CD3683B41219EBE0A90F7E4 /* sha1.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "MT32/mt32emu/sha1/sha1.cpp"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -350,6 +394,28 @@
 				42B05041DA884D8227AB33B9 /* mcu_timer.cpp */,
 				82E8B7C0D87A1C70AD5CFA07 /* pcm.cpp */,
 				C4D5CB257320BD46BF1A9F41 /* submcu.cpp */,
+				B746115288B490E7F55CE19B /* MT32Synthesizer.swift */,
+				8460D096E96DC2E532BF80E2 /* MT32Bridge.cpp */,
+				5A638558DC34995D7B2F7CE1 /* Analog.cpp */,
+				AC52A28E81A63EE45602880C /* BReverbModel.cpp */,
+				50FF2493AEE3FD3A7F07747C /* Display.cpp */,
+				C0F1B69ED9636B3421EF440B /* File.cpp */,
+				253DF0F9624766E3136CB975 /* FileStream.cpp */,
+				953DEDB3126E39CD5579DA43 /* LA32FloatWaveGenerator.cpp */,
+				E4D1587B6229FE96E56C322D /* LA32Ramp.cpp */,
+				EF78EEB7F3232FD1C635119F /* LA32WaveGenerator.cpp */,
+				D426423981F059667D754BBC /* MidiStreamParser.cpp */,
+				7655CE035BED7C858EADA873 /* Part.cpp */,
+				ADB53C3396A5AEE9768FAF41 /* Partial.cpp */,
+				490950A75F386065EA8EA8AF /* PartialManager.cpp */,
+				FE5EF98976F91CA9E8C65D33 /* Poly.cpp */,
+				5810E5C8283097FEF13FF539 /* ROMInfo.cpp */,
+				8B0D17BFFD7EBAAB6A35BDF6 /* Synth.cpp */,
+				4B5DD3AAA79301F6D281713B /* TVA.cpp */,
+				6216655C02E7D6C0A2067E3B /* TVF.cpp */,
+				08C4B9DBCC15F48C1B1D6727 /* TVP.cpp */,
+				535A65B63654A73CD3611471 /* Tables.cpp */,
+				3CD3683B41219EBE0A90F7E4 /* sha1.cpp */,
 				07B71D7B243A350500953E25 /* MIDIController.swift */,
 				0760DC2924350DDC004CA0CF /* BenchMark.swift */,
 				53A861172E4375CA0056E4DE /* X68ErrorHandling.swift */,
@@ -724,6 +790,28 @@
 				4FAB13001B3FF6F5A38E0C15 /* mcu_timer.cpp in Sources */,
 				89488EEEB3E26D31F19962AC /* pcm.cpp in Sources */,
 				F5D8EC3483043D3A68675204 /* submcu.cpp in Sources */,
+				12EE5D1B9B926EE6E51A40C4 /* MT32Synthesizer.swift in Sources */,
+				D9CE45E966DEBFB9D03BA3DF /* MT32Bridge.cpp in Sources */,
+				86BE58F3974E17EF3519EB78 /* Analog.cpp in Sources */,
+				2528FFA123531AC3C0B1804F /* BReverbModel.cpp in Sources */,
+				5D7A77F6DAC91C478999DE25 /* Display.cpp in Sources */,
+				EAD11D38D3AC3F998CA38F4D /* File.cpp in Sources */,
+				95739DD8BAC4B1A449EB25DA /* FileStream.cpp in Sources */,
+				69E95BBA77D346CDB35C4CC1 /* LA32FloatWaveGenerator.cpp in Sources */,
+				CF167A26DA5B943F8C27AE02 /* LA32Ramp.cpp in Sources */,
+				B369B15F5E16920F0D369E51 /* LA32WaveGenerator.cpp in Sources */,
+				BC6435E20C37183630F996EF /* MidiStreamParser.cpp in Sources */,
+				8DBDCEB7B0909D2B33EF71B9 /* Part.cpp in Sources */,
+				CBBE3FF0AB15AF4A90F1D58F /* Partial.cpp in Sources */,
+				719FBDB0FEAEC6D01B982CFE /* PartialManager.cpp in Sources */,
+				1358C024F71D36EBDCE6A12D /* Poly.cpp in Sources */,
+				8E42C7787C288DC0915DA274 /* ROMInfo.cpp in Sources */,
+				31062A0F4B8907159730FF6B /* Synth.cpp in Sources */,
+				06F56D981823C059763CD4AC /* TVA.cpp in Sources */,
+				ED3A899B6DB26806E8990EE0 /* TVF.cpp in Sources */,
+				CA74000FEE6DB5F0EF6202F7 /* TVP.cpp in Sources */,
+				19DBA6FB89BDF95509414E2A /* Tables.cpp in Sources */,
+				477C834ECA9EB1868C4D4A68 /* sha1.cpp in Sources */,
 				07B71D7D243A350500953E25 /* MIDIController.swift in Sources */,
 				07F8640E242F94BB00CBB224 /* peace.c in Sources */,
 				07F4C74A2430667D002CF5CA /* scc.c in Sources */,

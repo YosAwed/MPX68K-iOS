@@ -50,6 +50,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSMenu
     private var sc55VolumePanel: NSPanel?
     private var sc55VolumeSlider: NSSlider?
     private var sc55VolumeLabel: NSTextField?
+    private var sc55VolumeKind: MIDIController.InternalSynth = .sc55
     
     // Mouse mode state tracking
     private var isMouseCaptureEnabled = false
@@ -955,10 +956,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSMenu
         for (title, action) in [
             ("External MIDI", #selector(useExternalMIDI(_:))),
             ("Internal SC-55", #selector(useInternalSC55(_:))),
+            ("Internal MT-32", #selector(useInternalMT32(_:))),
+            ("-", nil),
             ("Choose SC-55 ROM Folder...", #selector(chooseSC55ROMFolder(_:))),
-            ("SC-55 Volume...", #selector(showSC55Volume(_:))),
-            ("Test SC-55 Sound", #selector(testSC55Sound(_:)))
-        ] {
+            ("Choose MT-32 ROM Folder...", #selector(chooseMT32ROMFolder(_:))),
+            ("-", nil),
+            ("Internal Sound Volume...", #selector(showSC55Volume(_:))),
+            ("Test Internal Sound", #selector(testSC55Sound(_:)))
+        ] as [(String, Selector?)] {
+            if title == "-" {
+                midiOutputMenu.addItem(.separator())
+                continue
+            }
             let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
             item.target = self
             midiOutputMenu.addItem(item)
@@ -2624,48 +2633,74 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSMenu
     }
 
     @IBAction func useInternalSC55(_ sender: Any) {
-        gameViewController?.gameScene?.midiOutputController.restoreSC55 { [weak self] error in
+        useInternalSynth(.sc55)
+    }
+
+    @IBAction func useInternalMT32(_ sender: Any) {
+        useInternalSynth(.mt32)
+    }
+
+    private func useInternalSynth(_ kind: MIDIController.InternalSynth) {
+        guard let controller = gameViewController?.gameScene?.midiOutputController else { return }
+        guard controller.hasRememberedROMFolder(for: kind) else {
+            // First use: ask for the ROM folder instead of reporting an error.
+            chooseROMFolder(for: kind)
+            return
+        }
+        controller.restoreInternalSynth(kind) { [weak self] error in
             if let error {
-                self?.showSimpleAlert(title: "SC-55 Internal MIDI", message: error.localizedDescription)
+                self?.showSimpleAlert(title: "\(kind.displayName) Internal MIDI", message: error.localizedDescription)
             }
         }
     }
 
     @IBAction func chooseSC55ROMFolder(_ sender: Any) {
+        chooseROMFolder(for: .sc55)
+    }
+
+    @IBAction func chooseMT32ROMFolder(_ sender: Any) {
+        chooseROMFolder(for: .mt32)
+    }
+
+    private func chooseROMFolder(for kind: MIDIController.InternalSynth) {
         guard let controller = gameViewController?.gameScene?.midiOutputController else { return }
         let panel = NSOpenPanel()
-        panel.title = "SC-55 ROM Folder"
-        panel.message = "初代SC-55のROMを選択: sc55_rom1.bin、sc55_rom2.bin、sc55_waverom1.bin〜sc55_waverom3.bin（mkIIは非対応）"
+        panel.title = "\(kind.displayName) ROM Folder"
+        switch kind {
+        case .sc55:
+            panel.message = "初代SC-55のROMを選択: sc55_rom1.bin、sc55_rom2.bin、sc55_waverom1.bin〜sc55_waverom3.bin（mkIIは非対応）"
+        case .mt32:
+            panel.message = "MT-32（またはCM-32L）のコントロールROMとPCM ROMが入ったフォルダーを選択（ファイル名は問いません）"
+        }
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let folder = panel.url else { return }
-        controller.configureSC55(folder: folder) { [weak self] error in
+        controller.configureInternalSynth(kind, folder: folder) { [weak self] error in
             if let error {
-                self?.showSimpleAlert(title: "SC-55 Internal MIDI", message: error.localizedDescription)
+                self?.showSimpleAlert(title: "\(kind.displayName) Internal MIDI", message: error.localizedDescription)
             }
         }
     }
 
     @IBAction func testSC55Sound(_ sender: Any) {
-        guard gameViewController?.gameScene?.midiOutputController.usesInternalSC55 == true else { return }
-        SC55Synthesizer.shared.send([0x90, 60, 100])
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-            SC55Synthesizer.shared.send([0x80, 60, 0])
-        }
+        gameViewController?.gameScene?.midiOutputController.playInternalTestChord()
     }
 
+    /// Volume of the running internal module (SC-55 or MT-32).
     @IBAction func showSC55Volume(_ sender: Any) {
+        guard let controller = gameViewController?.gameScene?.midiOutputController,
+              let kind = controller.activeInternalSynth, let synth = controller.activeSynthesizer else { return }
         if sc55VolumePanel == nil {
             // A modeless panel keeps emulation and MIDI timers running while adjusting sound.
             let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 340, height: 132),
                                 styleMask: [.titled, .closable, .utilityWindow],
                                 backing: .buffered, defer: false)
-            panel.title = "SC-55 Volume"
             panel.isReleasedWhenClosed = false
             panel.isFloatingPanel = true
-            let description = NSTextField(labelWithString: "SC-55の音量")
+            let description = NSTextField(labelWithString: "")
             description.frame = NSRect(x: 20, y: 82, width: 240, height: 22)
+            description.identifier = NSUserInterfaceItemIdentifier("InternalVolumeDescription")
             let valueLabel = NSTextField(labelWithString: "")
             valueLabel.alignment = .right
             valueLabel.frame = NSRect(x: 260, y: 82, width: 60, height: 22)
@@ -2673,7 +2708,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSMenu
                                   target: self, action: #selector(changeSC55Volume(_:)))
             slider.frame = NSRect(x: 20, y: 48, width: 300, height: 24)
             slider.isContinuous = true
-            slider.setAccessibilityLabel("SC-55音量（パーセント）")
             let hint = NSTextField(labelWithString: "0%で消音・100%で元の音量")
             hint.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
             hint.textColor = .secondaryLabelColor
@@ -2686,14 +2720,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSMenu
             sc55VolumeSlider = slider
             sc55VolumeLabel = valueLabel
         }
-        let percent = SC55Synthesizer.shared.volume * 100
+        sc55VolumeKind = kind
+        sc55VolumePanel?.title = "\(kind.displayName) Volume"
+        if let description = sc55VolumePanel?.contentView?.subviews.first(where: {
+            $0.identifier?.rawValue == "InternalVolumeDescription" }) as? NSTextField {
+            description.stringValue = "\(kind.displayName)の音量"
+        }
+        sc55VolumeSlider?.setAccessibilityLabel("\(kind.displayName)音量（パーセント）")
+        let percent = synth.volume * 100
         sc55VolumeSlider?.doubleValue = percent
         sc55VolumeLabel?.stringValue = String(format: "%.0f%%", percent)
         sc55VolumePanel?.makeKeyAndOrderFront(sender)
     }
 
     @objc private func changeSC55Volume(_ sender: NSSlider) {
-        SC55Synthesizer.shared.volume = sender.doubleValue / 100
+        // The panel controls the module it was opened for, even if the route changed since.
+        let synth: InternalMIDISynthesizer = sc55VolumeKind == .mt32
+            ? MT32Synthesizer.shared as InternalMIDISynthesizer : SC55Synthesizer.shared as InternalMIDISynthesizer
+        synth.volume = sender.doubleValue / 100
         sc55VolumeLabel?.stringValue = String(format: "%.0f%%", sender.doubleValue)
     }
 
@@ -3115,17 +3159,25 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSMenu
     
     // MARK: - Menu Validation
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
-        if menuItem.action == #selector(testSC55Sound(_:)) {
-            return gameViewController?.gameScene?.midiOutputController.usesInternalSC55 == true
+        if menuItem.action == #selector(testSC55Sound(_:)) || menuItem.action == #selector(showSC55Volume(_:)) {
+            return gameViewController?.gameScene?.midiOutputController.activeInternalSynth != nil
         }
-        if menuItem.action == #selector(useExternalMIDI(_:)) || menuItem.action == #selector(useInternalSC55(_:)) {
+        if menuItem.action == #selector(useExternalMIDI(_:)) || menuItem.action == #selector(useInternalSC55(_:))
+            || menuItem.action == #selector(useInternalMT32(_:)) {
             let controller = gameViewController?.gameScene?.midiOutputController
-            let internalSelected = controller?.usesInternalSC55 == true
-            let isInternalItem = menuItem.action == #selector(useInternalSC55(_:))
-            menuItem.state = internalSelected == isInternalItem ? .on : .off
+            let active = controller?.activeInternalSynth
+            let selected: Bool
+            if menuItem.action == #selector(useInternalSC55(_:)) {
+                selected = active == .sc55
+            } else if menuItem.action == #selector(useInternalMT32(_:)) {
+                selected = active == .mt32
+            } else {
+                selected = active == nil
+            }
+            menuItem.state = selected ? .on : .off
             return controller != nil
         }
-        if menuItem.action == #selector(chooseSC55ROMFolder(_:)) {
+        if menuItem.action == #selector(chooseSC55ROMFolder(_:)) || menuItem.action == #selector(chooseMT32ROMFolder(_:)) {
             return gameViewController?.gameScene != nil
         }
         // Avoid touching menu state until the main menu is fully attached.

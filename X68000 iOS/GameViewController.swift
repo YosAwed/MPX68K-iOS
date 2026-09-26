@@ -427,61 +427,75 @@ final class GameViewController: UIViewController {
         return elements
     }
 
-    /// MIDI output: internal SC-55 (ROMs in Documents/MPX68K, optional) or external CoreMIDI.
+    /// MIDI output: internal SC-55 or MT-32 (ROMs in Documents/MPX68K, optional) or external CoreMIDI.
     private func midiMenu() -> UIMenu? {
         guard let midi = gameScene?.midiOutputController else { return nil }
-        let hasROMs = MIDIController.hasSC55ROMsInLibrary
-        let internalOn = midi.usesInternalSC55
+        let active = midi.activeInternalSynth
 
-        let useInternal = UIAction(title: "内蔵 SC-55",
-                                   subtitle: hasROMs ? nil : "ROM を MPX68K フォルダに置くと使えます",
-                                   image: UIImage(systemName: "pianokeys"),
-                                   attributes: hasROMs ? [] : .disabled,
-                                   state: internalOn ? .on : .off) { [weak self] _ in
-            midi.prefersInternalSC55 = true
-            midi.applyIOSMIDIOutput { ok in
-                // Only an explicit choice reports a problem; startup falls back silently.
-                if !ok { self?.showSC55Unavailable() }
+        func internalAction(_ kind: MIDIController.InternalSynth, hint: String) -> UIAction {
+            let hasROMs = MIDIController.hasROMsInLibrary(for: kind)
+            return UIAction(title: "内蔵 \(kind.displayName)",
+                            subtitle: hasROMs ? nil : hint,
+                            image: UIImage(systemName: kind == .sc55 ? "pianokeys" : "pianokeys.inverse"),
+                            attributes: hasROMs ? [] : .disabled,
+                            state: active == kind ? .on : .off) { [weak self] _ in
+                midi.iOSMIDIOutput = kind == .sc55 ? .sc55 : .mt32
+                midi.applyIOSMIDIOutput { ok in
+                    // Only an explicit choice reports a problem; startup falls back silently.
+                    if !ok { self?.showInternalSynthUnavailable(kind) }
+                }
             }
         }
+        let useSC55 = internalAction(.sc55, hint: "ROM を MPX68K フォルダに置くと使えます")
+        let useMT32 = internalAction(.mt32, hint: "コントロール ROM と PCM ROM を MPX68K フォルダに置くと使えます")
         let useExternal = UIAction(title: "外部 MIDI",
                                    image: UIImage(systemName: "cable.connector"),
-                                   state: internalOn ? .off : .on) { _ in
-            midi.prefersInternalSC55 = false
+                                   state: active == nil ? .on : .off) { _ in
+            midi.iOSMIDIOutput = .external
             midi.applyIOSMIDIOutput()
         }
-        var children: [UIMenuElement] = [UIMenu(options: .displayInline, children: [useInternal, useExternal])]
+        var children: [UIMenuElement] = [UIMenu(options: .displayInline, children: [useSC55, useMT32, useExternal])]
 
-        if internalOn {
-            let current = Int((SC55Synthesizer.shared.volume * 100).rounded())
+        if let kind = active, let synth = midi.activeSynthesizer {
+            let current = Int((synth.volume * 100).rounded())
             let levels = [25, 50, 75, 100]
-            let volume = UIMenu(title: "SC-55 音量", image: UIImage(systemName: "speaker.wave.2"),
+            let volume = UIMenu(title: "\(kind.displayName) 音量", image: UIImage(systemName: "speaker.wave.2"),
                                 children: levels.map { level in
                 UIAction(title: "\(level)%", state: current == level ? .on : .off) { _ in
-                    SC55Synthesizer.shared.volume = Double(level) / 100
+                    synth.volume = Double(level) / 100
                 }
             })
             children.append(volume)
-            let test = UIAction(title: "SC-55 テスト音", image: UIImage(systemName: "play.circle")) { _ in
-                // Piano C major chord at full velocity, 1.5 s (a single note is quite quiet).
-                let notes: [UInt8] = [48, 60, 64, 67]
-                for note in notes { SC55Synthesizer.shared.send([0x90, note, 127]) }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    for note in notes { SC55Synthesizer.shared.send([0x80, note, 0]) }
-                }
+            // A C major chord at full velocity, 1.5 s (a single note is quite quiet).
+            let test = UIAction(title: "\(kind.displayName) テスト音", image: UIImage(systemName: "play.circle")) { _ in
+                midi.playInternalTestChord()
             }
             children.append(test)
         }
-        return UIMenu(title: "MIDI：\(internalOn ? "内蔵 SC-55" : "外部 MIDI")",
-                      image: UIImage(systemName: "music.note"), children: children)
+        var title = "MIDI：外部 MIDI"
+        if let kind = active {
+            title = "MIDI：内蔵 \(kind.displayName)"
+        }
+        let menu = UIMenu(title: title, image: UIImage(systemName: "music.note"), children: children)
+        if active == .mt32, let rom = MT32Synthesizer.shared.loadedROMDescription {
+            menu.subtitle = rom
+        }
+        return menu
     }
 
-    private func showSC55Unavailable() {
-        let alert = UIAlertController(
-            title: "内蔵 SC-55 を使えません",
-            message: "MPX68K フォルダの SC-55 ROM を読み込めなかったため、外部 MIDI に出力します。\n"
-                + "初代 SC-55 の sc55_rom1.bin、sc55_rom2.bin、sc55_waverom1.bin〜sc55_waverom3.bin が必要です（mkII は非対応）。",
-            preferredStyle: .alert)
+    private func showInternalSynthUnavailable(_ kind: MIDIController.InternalSynth) {
+        let message: String
+        switch kind {
+        case .sc55:
+            message = "MPX68K フォルダの SC-55 ROM を読み込めなかったため、外部 MIDI に出力します。\n"
+                + "初代 SC-55 の sc55_rom1.bin、sc55_rom2.bin、sc55_waverom1.bin〜sc55_waverom3.bin が必要です（mkII は非対応）。"
+        case .mt32:
+            message = "MPX68K フォルダの MT-32 ROM を読み込めなかったため、外部 MIDI に出力します。\n"
+                + "MT-32（または CM-32L）のコントロール ROM と PCM ROM が必要です。ファイル名は問いません"
+                + "（例: MT32_CONTROL.ROM と MT32_PCM.ROM）。分割されたダンプは非対応です。"
+        }
+        let alert = UIAlertController(title: "内蔵 \(kind.displayName) を使えません",
+                                      message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }

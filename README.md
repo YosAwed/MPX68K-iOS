@@ -14,7 +14,7 @@ MPX68K provides authentic Sharp X68000 emulation with modern Swift UI frameworks
 - **M68000 CPU**: Powered by C68K emulator core
 - **Adjustable Clock Speed**: 1 / 10 / 16 / 24 (default) / 40 / 50 MHz
 - **FM Sound Synthesis**: High-quality audio via fmgen (OPM + ADPCM)
-- **MIDI Output**: External MIDI or an internal SC-55 using your own ROM dumps, with configurable output delay and buffering
+- **MIDI Output**: External MIDI or an internal SC-55 or MT-32 using your own ROM dumps, with configurable output delay and buffering
 - **Multiple Disk Formats**: Floppy (.dim, .xdf, .2hd, .d88, .hdm) and hard disk (.hdf, .hds)
 
 ### Storage
@@ -160,7 +160,7 @@ Normal disk swaps after startup do not trigger this reset.
 - **Reset System**: Hard-reset the emulator
 - **Use X68000 Mouse** (⇧⌘M): Toggle X68000 mouse capture
 - **Toggle Input Mode**: Switch between input modes
-- **MIDI Output**: Select External MIDI or Internal SC-55; choose a ROM folder and test the internal sound
+- **MIDI Output**: Select External MIDI, Internal SC-55 or Internal MT-32; choose ROM folders, set the volume and test the internal sound
 - **MIDI Output Delay…**: Configure MIDI output delay (applies to either destination)
 - **Delete IPLROM.DAT…**: Remove a cached IPL ROM
 - **Serial Communication → Mouse Only / PTY / TCP Connection… / TCP Server… / Disconnect**: Select serial backend
@@ -349,7 +349,7 @@ For detailed architecture documentation with diagrams, see [ARCHITECTURE.md](ARC
 - **Background Video Superimpose**: Overlay a local video file as a luma-keyed background, with adjustable threshold / softness / intensity
 - **Adjustable CPU Clock**: 1 / 10 / 16 / 24 / 40 / 50 MHz selection from the Clock menu
 - **Serial Communication**: Mouse-only (default), PTY terminal access, TCP client, and TCP server backends
-- **MIDI Output with Delay**: External MIDI or internal SC-55 output with configurable delay and buffering
+- **MIDI Output with Delay**: External MIDI or internal SC-55 / MT-32 output with configurable delay and buffering
 - **JoyportU Support**: ATARI-style joystick integration with Notify / Command modes
 - **Disk State Management**: Auto-mount modes (Disabled / Restore Last Session / Smart Load / Manual) with save/restore and session info
 - **HDD Authoring**: Create empty `.hdf` images from the app, then format under Human68k with `FORMAT.X`
@@ -496,3 +496,37 @@ recording tap does not currently include its output.
 
 The implementation uses [Nuked SC-55](https://github.com/nukeykt/Nuked-SC55),
 GPL-2.0-or-later. See `ATTRIBUTION.md` and `X68000 Shared/SC55/README.md`.
+
+### Internal MT-32 MIDI sound
+
+The Roland MT-32 (LA synthesis; also CM-32L / CM-64 / LAPC-I) is available as a
+second internal module, emulated by [Munt](https://github.com/munt/munt) libmt32emu.
+Choose **System → MIDI Output → Choose MT-32 ROM Folder…** (or **Internal MT-32**
+the first time) and select a folder containing your own dumps of a **control ROM**
+and the matching **PCM ROM**. File names do not matter: files are identified by
+size and SHA-1 against Munt's catalogue, for example `MT32_CONTROL.ROM` +
+`MT32_PCM.ROM`. Only one internal module runs at a time; **External MIDI**,
+**Internal SC-55** and **Internal MT-32** switch between them. The folder is
+remembered like the SC-55 folder.
+
+| ROM | Typical size |
+| --- | --- |
+| MT-32 control (v1.04–v1.07, v2.x) | 65,536 or 131,072 bytes |
+| MT-32 PCM | 524,288 bytes |
+| CM-32L control / CM-32L PCM | 65,536 / 1,048,576 bytes |
+
+If the folder holds several sets, genuine MT-32 v1.07 is preferred, then other
+MT-32 firmware, then CM-32L. The control ROM must match its PCM ROM (MT-32 with the
+MT-32 PCM, CM-32L with the CM-32L PCM). Split dumps (two halves, or even/odd bytes)
+are not accepted; merge them first. **Internal Sound Volume…** and **Test Internal
+Sound** act on whichever module is active. The test sound uses MIDI channel 2,
+the first MT-32 part. A system reset power-cycles the emulated MT-32.
+
+Games have to select MT-32 / LA output themselves; the MT-32 is not General MIDI,
+so music written for GS sounds wrong on it and vice versa.
+
+On iOS, put the ROMs in the app's **MPX68K** folder (Files app, next to
+`IPLROM.DAT`) and choose **内蔵 MT-32** in the disk menu's MIDI submenu.
+
+The implementation uses Munt libmt32emu 2.8.3, LGPL-2.1-or-later. See
+`ATTRIBUTION.md` and `X68000 Shared/MT32/README.md`.

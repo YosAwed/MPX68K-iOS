@@ -51,17 +51,72 @@ extension MIDIPacketList {
 
 
 class MIDIController {
-    private(set) var usesInternalSC55 = false
+    /// Internal sound modules that MIDI output can be routed to instead of CoreMIDI.
+    enum InternalSynth: String, CaseIterable {
+        case sc55
+        case mt32
+
+        var displayName: String { self == .sc55 ? "SC-55" : "MT-32" }
+    }
+
+    private(set) var activeInternalSynth: InternalSynth?
+    var usesInternalSC55: Bool { activeInternalSynth == .sc55 }
+    var usesInternalMT32: Bool { activeInternalSynth == .mt32 }
+
+    /// The running internal module, if MIDI is routed to one.
+    var activeSynthesizer: InternalMIDISynthesizer? {
+        switch activeInternalSynth {
+        case .sc55: return SC55Synthesizer.shared
+        case .mt32: return MT32Synthesizer.shared
+        case nil: return nil
+        }
+    }
+
     private var configurationGeneration = 0
-    private let sc55BookmarkKey = "SC55ROMFolderBookmark"
-    private let sc55BookmarkScopedKey = "SC55ROMFolderBookmarkIsScoped"
-    private let sc55EnabledKey = "SC55InternalEnabled"
+
+    /// ROM data read for one of the internal modules.
+    private enum LoadedROMs {
+        case sc55([Data])
+        case mt32(MT32ROMSet)
+
+        var kind: InternalSynth {
+            if case .sc55 = self { return .sc55 }
+            return .mt32
+        }
+    }
+
+    // macOS: user-chosen ROM folders are remembered per module.
+    private func bookmarkKey(_ kind: InternalSynth) -> String {
+        kind == .sc55 ? "SC55ROMFolderBookmark" : "MT32ROMFolderBookmark"
+    }
+    private func bookmarkScopedKey(_ kind: InternalSynth) -> String {
+        kind == .sc55 ? "SC55ROMFolderBookmarkIsScoped" : "MT32ROMFolderBookmarkIsScoped"
+    }
+    private func enabledKey(_ kind: InternalSynth) -> String {
+        kind == .sc55 ? "SC55InternalEnabled" : "MT32InternalEnabled"
+    }
+
+    private static func readROMs(_ kind: InternalSynth, from folder: URL) throws -> LoadedROMs {
+        switch kind {
+        case .sc55: return .sc55(try SC55Synthesizer.readROMs(from: folder))
+        case .mt32: return .mt32(try MT32Synthesizer.findROMs(in: folder))
+        }
+    }
 
     func configureSC55(folder: URL, completion: @escaping (Error?) -> Void) {
+        configureInternalSynth(.sc55, folder: folder, completion: completion)
+    }
+
+    func configureMT32(folder: URL, completion: @escaping (Error?) -> Void) {
+        configureInternalSynth(.mt32, folder: folder, completion: completion)
+    }
+
+    /// Loads the module's ROMs from a user-chosen folder, starts it and remembers the folder.
+    func configureInternalSynth(_ kind: InternalSynth, folder: URL, completion: @escaping (Error?) -> Void) {
         do {
             let accessed = folder.startAccessingSecurityScopedResource()
             defer { if accessed { folder.stopAccessingSecurityScopedResource() } }
-            let roms = try SC55Synthesizer.readROMs(from: folder)
+            let roms = try Self.readROMs(kind, from: folder)
             let bookmark: Data
             let scoped: Bool
             do {
@@ -75,71 +130,132 @@ class MIDIController {
                                                    includingResourceValuesForKeys: nil, relativeTo: nil)
                 scoped = false
             }
-            startInternalSC55(roms: roms) { [weak self] error in
+            startInternalSynth(roms: roms) { [weak self] error in
                 guard let self else { return }
-                UserDefaults.standard.set(error == nil, forKey: self.sc55EnabledKey)
+                for other in InternalSynth.allCases {
+                    UserDefaults.standard.set(error == nil && other == kind, forKey: self.enabledKey(other))
+                }
                 if error == nil {
-                    UserDefaults.standard.set(bookmark, forKey: self.sc55BookmarkKey)
-                    UserDefaults.standard.set(scoped, forKey: self.sc55BookmarkScopedKey)
-                    infoLog("Internal SC-55 enabled", category: .audio)
+                    UserDefaults.standard.set(bookmark, forKey: self.bookmarkKey(kind))
+                    UserDefaults.standard.set(scoped, forKey: self.bookmarkScopedKey(kind))
+                    infoLog("Internal \(kind.displayName) enabled", category: .audio)
                 }
                 completion(error)
             }
         } catch { completion(error) }
     }
 
-    /// Starts the internal SC-55 with loaded ROMs and routes MIDI to it on success.
-    /// `completion` is not called if another configuration started in the meantime.
-    private func startInternalSC55(roms: [Data], completion: @escaping (Error?) -> Void) {
+    /// Starts the internal module with loaded ROMs and routes MIDI to it on success.
+    /// Only one module runs at a time. `completion` is not called if another
+    /// configuration started in the meantime.
+    private func startInternalSynth(roms: LoadedROMs, completion: @escaping (Error?) -> Void) {
         configurationGeneration += 1
         let generation = configurationGeneration
-        SC55Synthesizer.shared.start(roms: roms) { [weak self] error in
+        let kind = roms.kind
+        let finish: (Error?) -> Void = { [weak self] error in
             guard let self, self.configurationGeneration == generation else { return }
             self.clearPendingMIDI()
-            if error == nil && !self.usesInternalSC55 {
-                // Silence the previous destination before changing the route.
+            if error == nil && self.activeInternalSynth == nil {
+                // Silence the previous (external) destination before changing the route.
                 for channel in UInt8(0)..<16 {
                     self.sendEventImmediate([0xB0 | channel, 120, 0])
                 }
             }
-            self.usesInternalSC55 = error == nil
+            self.activeInternalSynth = error == nil ? kind : nil
             completion(error)
+        }
+        switch roms {
+        case .sc55(let data):
+            MT32Synthesizer.shared.stop()
+            SC55Synthesizer.shared.start(roms: data, completion: finish)
+        case .mt32(let set):
+            SC55Synthesizer.shared.stop()
+            MT32Synthesizer.shared.start(roms: set, completion: finish)
+        }
+    }
+
+    /// Plays a short C major chord on the active internal module (menu "test sound").
+    func playInternalTestChord() {
+        guard let kind = activeInternalSynth, let synth = activeSynthesizer else { return }
+        // SC-55: part 1 = MIDI channel 1. MT-32: melodic parts start at MIDI channel 2.
+        let status: UInt8 = kind == .sc55 ? 0x90 : 0x91
+        let notes: [UInt8] = [48, 60, 64, 67]
+        for note in notes { synth.send([status, note, 127], delayMs: 0) }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            for note in notes { synth.send([status & 0xEF, note, 0], delayMs: 0) }
         }
     }
 
     #if os(iOS)
-    // MARK: - iOS: SC-55 ROMs in Documents/MPX68K
+    // MARK: - iOS: internal module ROMs in Documents/MPX68K
     //
     // On iOS the ROMs live next to IPLROM.DAT in the app's Documents/MPX68K folder
     // instead of a user-chosen folder. They are optional: without them (or if they
     // fail to load) MIDI simply goes to external CoreMIDI destinations, silently.
 
-    /// Whether the user wants the internal SC-55 when its ROMs are present (default: yes).
-    private static let iOSPrefersSC55Key = "ios_sc55_preferred"
-
-    var prefersInternalSC55: Bool {
-        get { UserDefaults.standard.object(forKey: Self.iOSPrefersSC55Key) as? Bool ?? true }
-        set { UserDefaults.standard.set(newValue, forKey: Self.iOSPrefersSC55Key) }
+    /// What the user chose in the MIDI menu.
+    enum IOSMIDIOutput: String {
+        /// Not chosen yet: SC-55 if its ROMs are present, else MT-32, else external.
+        case automatic
+        case sc55
+        case mt32
+        case external
     }
 
-    static var sc55LibraryFolder: URL? {
+    private static let iOSMIDIOutputKey = "ios_midi_output"
+    private static let legacyIOSPrefersSC55Key = "ios_sc55_preferred"
+
+    var iOSMIDIOutput: IOSMIDIOutput {
+        get {
+            if let raw = UserDefaults.standard.string(forKey: Self.iOSMIDIOutputKey),
+               let value = IOSMIDIOutput(rawValue: raw) { return value }
+            // Before MT-32 support this was a Bool (default true = SC-55 when present).
+            if let legacy = UserDefaults.standard.object(forKey: Self.legacyIOSPrefersSC55Key) as? Bool, !legacy {
+                return .external
+            }
+            return .automatic
+        }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: Self.iOSMIDIOutputKey) }
+    }
+
+    static var romLibraryFolder: URL? {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?
             .appendingPathComponent("MPX68K", isDirectory: true)
     }
 
     /// All five SC-55 ROM files exist in Documents/MPX68K (sizes are checked when loading).
     static var hasSC55ROMsInLibrary: Bool {
-        guard let folder = sc55LibraryFolder else { return false }
+        guard let folder = romLibraryFolder else { return false }
         return SC55Synthesizer.requiredROMs.allSatisfy { name, _ in
             FileManager.default.fileExists(atPath: folder.appendingPathComponent(name).path)
         }
     }
 
-    /// Uses the internal SC-55 if preferred and its ROMs load; otherwise external MIDI.
-    /// Never shows an error: a missing or broken ROM set only logs and falls back.
-    /// `completion(true)` means the internal SC-55 is now active. Call on the main queue.
+    /// A compatible MT-32/CM-32L control + PCM ROM pair exists in Documents/MPX68K.
+    /// Files are identified by content; results are cached per file.
+    static var hasMT32ROMsInLibrary: Bool {
+        guard let folder = romLibraryFolder else { return false }
+        return (try? MT32Synthesizer.findROMs(in: folder)) != nil
+    }
+
+    static func hasROMsInLibrary(for kind: InternalSynth) -> Bool {
+        kind == .sc55 ? hasSC55ROMsInLibrary : hasMT32ROMsInLibrary
+    }
+
+    /// Applies `iOSMIDIOutput`: starts the chosen internal module if its ROMs load,
+    /// otherwise uses external MIDI. Never shows an error: a missing or broken ROM set
+    /// only logs and falls back. `completion(true)` means the requested internal module
+    /// (or, for `.automatic`, any internal module) is now active. Call on the main queue.
     func applyIOSMIDIOutput(completion: ((Bool) -> Void)? = nil) {
-        guard prefersInternalSC55, Self.hasSC55ROMsInLibrary, let folder = Self.sc55LibraryFolder else {
+        let choice = iOSMIDIOutput
+        let candidates: [InternalSynth]
+        switch choice {
+        case .external: candidates = []
+        case .sc55: candidates = [.sc55]
+        case .mt32: candidates = [.mt32]
+        case .automatic: candidates = [.sc55, .mt32]
+        }
+        guard !candidates.isEmpty, let folder = Self.romLibraryFolder else {
             // Also cancels a ROM load still in flight.
             useExternalMIDI()
             completion?(false)
@@ -147,26 +263,40 @@ class MIDIController {
         }
         configurationGeneration += 1
         let generation = configurationGeneration
-        // Reading ~3.5 MB of ROMs off the main thread.
+        // Reading several MB of ROMs off the main thread.
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let result = Result { try SC55Synthesizer.readROMs(from: folder) }
+            var failures: [String] = []
+            var loaded: LoadedROMs?
+            for kind in candidates {
+                // Automatic mode only considers modules whose ROMs are present at all.
+                if choice == .automatic && kind == .sc55 && !Self.hasSC55ROMsInLibrary { continue }
+                do {
+                    loaded = try Self.readROMs(kind, from: folder)
+                    break
+                } catch {
+                    failures.append("\(kind.displayName): \(error.localizedDescription)")
+                }
+            }
+            let result = loaded
+            let failureSummary = failures.joined(separator: "; ")
             DispatchQueue.main.async {
                 guard let self, self.configurationGeneration == generation else { return }
-                switch result {
-                case .success(let roms):
-                    self.startInternalSC55(roms: roms) { [weak self] error in
-                        if let error {
-                            warningLog("SC-55 unavailable, using external MIDI: \(error.localizedDescription)", category: .audio)
-                            self?.useExternalMIDI()
-                        } else {
-                            infoLog("Internal SC-55 enabled (Documents/MPX68K)", category: .audio)
-                        }
-                        completion?(error == nil)
+                guard let loaded = result else {
+                    if !failureSummary.isEmpty {
+                        warningLog("Internal MIDI ROMs not usable, using external MIDI: \(failureSummary)", category: .audio)
                     }
-                case .failure(let error):
-                    warningLog("SC-55 ROMs not usable, using external MIDI: \(error.localizedDescription)", category: .audio)
-                    if self.usesInternalSC55 { self.useExternalMIDI() }
+                    self.useExternalMIDI()
                     completion?(false)
+                    return
+                }
+                self.startInternalSynth(roms: loaded) { [weak self] error in
+                    if let error {
+                        warningLog("\(loaded.kind.displayName) unavailable, using external MIDI: \(error.localizedDescription)", category: .audio)
+                        self?.useExternalMIDI()
+                    } else {
+                        infoLog("Internal \(loaded.kind.displayName) enabled (Documents/MPX68K)", category: .audio)
+                    }
+                    completion?(error == nil)
                 }
             }
         }
@@ -176,24 +306,42 @@ class MIDIController {
     func useExternalMIDI() {
         configurationGeneration += 1
         clearPendingMIDI()
-        usesInternalSC55 = false
+        activeInternalSynth = nil
         SC55Synthesizer.shared.stop()
-        UserDefaults.standard.set(false, forKey: sc55EnabledKey)
+        MT32Synthesizer.shared.stop()
+        for kind in InternalSynth.allCases {
+            UserDefaults.standard.set(false, forKey: enabledKey(kind))
+        }
     }
 
     func restoreSC55(completion: @escaping (Error?) -> Void) {
-        guard let bookmark = UserDefaults.standard.data(forKey: sc55BookmarkKey) else {
-            completion(SC55Synthesizer.failure("SC-55 ROMフォルダーを選択してください。"))
+        restoreInternalSynth(.sc55, completion: completion)
+    }
+
+    func restoreMT32(completion: @escaping (Error?) -> Void) {
+        restoreInternalSynth(.mt32, completion: completion)
+    }
+
+    /// Restarts a module from its remembered ROM folder (macOS).
+    func restoreInternalSynth(_ kind: InternalSynth, completion: @escaping (Error?) -> Void) {
+        guard let bookmark = UserDefaults.standard.data(forKey: bookmarkKey(kind)) else {
+            let message = "\(kind.displayName) ROMフォルダーを選択してください。"
+            completion(kind == .sc55 ? SC55Synthesizer.failure(message) : MT32Synthesizer.failure(message))
             return
         }
         do {
             var stale = false
-            let scoped = UserDefaults.standard.object(forKey: sc55BookmarkScopedKey) as? Bool ?? true
+            let scoped = UserDefaults.standard.object(forKey: bookmarkScopedKey(kind)) as? Bool ?? true
             let folder = try URL(resolvingBookmarkData: bookmark, options: scoped ? .x68SecurityScope : [],
                                  relativeTo: nil, bookmarkDataIsStale: &stale)
-            // configureSC55 refreshes the bookmark after validating and loading the files.
-            configureSC55(folder: folder, completion: completion)
+            // configureInternalSynth refreshes the bookmark after validating and loading the files.
+            configureInternalSynth(kind, folder: folder, completion: completion)
         } catch { completion(error) }
+    }
+
+    /// Whether a ROM folder has been chosen for the module (macOS).
+    func hasRememberedROMFolder(for kind: InternalSynth) -> Bool {
+        UserDefaults.standard.data(forKey: bookmarkKey(kind)) != nil
     }
 
     private func clearPendingMIDI() {
@@ -207,16 +355,23 @@ class MIDIController {
         sysExBuffer.removeAll()
     }
 
-    func resetInternalSC55() {
+    /// Reboots the active internal module together with the emulated X68000.
+    func resetInternalSynth() {
         clearPendingMIDI()
-        if usesInternalSC55 { SC55Synthesizer.shared.reset() }
+        activeSynthesizer?.reset()
     }
 
-    private func reportSC55Error(_ error: Error) {
-        errorLog("SC-55: \(error.localizedDescription)", category: .audio)
+    /// Pauses/resumes whichever internal module is running (app inactive/active).
+    func setInternalSynthPaused(_ paused: Bool) {
+        SC55Synthesizer.shared.setPaused(paused)
+        MT32Synthesizer.shared.setPaused(paused)
+    }
+
+    private func reportInternalSynthError(_ kind: InternalSynth, _ error: Error) {
+        errorLog("\(kind.displayName): \(error.localizedDescription)", category: .audio)
         #if os(macOS)
         let alert = NSAlert()
-        alert.messageText = "SC-55 Internal MIDI"
+        alert.messageText = "\(kind.displayName) Internal MIDI"
         alert.informativeText = error.localizedDescription + "\nSystem → MIDI Output から設定を確認してください。"
         alert.runModal()
         #endif
@@ -252,17 +407,21 @@ class MIDIController {
         Connect()
         SC55Synthesizer.shared.onFailure = { [weak self] message in
             self?.useExternalMIDI()
-            self?.reportSC55Error(SC55Synthesizer.failure(message))
+            self?.reportInternalSynthError(.sc55, SC55Synthesizer.failure(message))
+        }
+        MT32Synthesizer.shared.onFailure = { [weak self] message in
+            self?.useExternalMIDI()
+            self?.reportInternalSynthError(.mt32, MT32Synthesizer.failure(message))
         }
         #if os(iOS)
         DispatchQueue.main.async { [weak self] in
             self?.applyIOSMIDIOutput()
         }
         #else
-        if UserDefaults.standard.bool(forKey: sc55EnabledKey) {
+        if let kind = InternalSynth.allCases.first(where: { UserDefaults.standard.bool(forKey: enabledKey($0)) }) {
             DispatchQueue.main.async { [weak self] in
-                self?.restoreSC55 { error in
-                    if let error { self?.reportSC55Error(error) }
+                self?.restoreInternalSynth(kind) { error in
+                    if let error { self?.reportInternalSynthError(kind, error) }
                 }
             }
         }
@@ -271,6 +430,7 @@ class MIDIController {
     let clientName: CFString = "MPX68K" as CFString
     deinit {
         SC55Synthesizer.shared.stop()
+        MT32Synthesizer.shared.stop()
         if outPortRef2 != 0 {
             MIDIPortDispose( outPortRef2 )
             outPortRef2 = 0
@@ -447,8 +607,8 @@ class MIDIController {
     private func sendEvent(_ event: [UInt8]) {
         guard !event.isEmpty else { return }
 
-        if usesInternalSC55 {
-            SC55Synthesizer.shared.send(event, delayMs: outputDelayMs)
+        if let synth = activeSynthesizer {
+            synth.send(event, delayMs: outputDelayMs)
             return
         }
 
@@ -498,8 +658,8 @@ class MIDIController {
 
     private func sendEventImmediate(_ event: [UInt8]) {
         guard !event.isEmpty else { return }
-        if usesInternalSC55 {
-            SC55Synthesizer.shared.send(event)
+        if let synth = activeSynthesizer {
+            synth.send(event, delayMs: 0)
             return
         }
         if event.count <= 255 {

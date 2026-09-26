@@ -25,7 +25,11 @@ open "MPX68K iOS.xcodeproj"
   C=$(xcrun simctl get_app_container <UDID> NANKIN.MPX68K-iOS data)
   mkdir -p "$C/Documents/MPX68K" && cp IPLROM.DAT CGROM.DAT HUMAN302.XDF "$C/Documents/MPX68K/"
   ```
-- **テスト**: `make -C tests/core`（コア単体テスト）。iOS 用の自動テストはまだ無い。
+- **内蔵 MIDI 音源（任意）**: 同じ `Documents/MPX68K` に SC-55 の `sc55_*.bin` 5 本、または MT-32 の
+  コントロール ROM と PCM ROM（ファイル名は自由。内容の SHA-1 で判定）を置くと、ディスクメニューの MIDI から
+  「内蔵 SC-55 / 内蔵 MT-32 / 外部 MIDI」を切り替えられる。`sim-media/install_to_simulator.sh` は `*.bin` と `*.rom` もコピーする。
+- **テスト**: `make -C tests/core`（コア単体テスト）、`make -C tests/mt32`（MT-32 ブリッジ、ROM 不要）。
+  実 ROM での確認は `make -C tests/mt32 rom ROM_DIR=...`。iOS 用の自動テストはまだ無い。
 
 ## 2. リポジトリとブランチの状態
 
