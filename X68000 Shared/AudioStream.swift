@@ -126,12 +126,14 @@ func outputCallback(_ data: UnsafeMutableRawPointer?, queue: AudioQueueRef, buff
         
         buffer.pointee.mAudioDataByteSize = buffer.pointee.mAudioDataBytesCapacity
         AudioQueueEnqueueBuffer(queue, buffer, 0, nil)
+        stream?.noteEnqueued(frames: Int64(size))
     } else {
         // Fallback: clear and enqueue if size is invalid
         memset(audioData, 0, Int(buffer.pointee.mAudioDataBytesCapacity))
         stream?.tapRenderedAudio(audioData, frameCount: Int(size))
         buffer.pointee.mAudioDataByteSize = buffer.pointee.mAudioDataBytesCapacity
         AudioQueueEnqueueBuffer(queue, buffer, 0, nil)
+        stream?.noteEnqueued(frames: Int64(size))
     }
 }
 
@@ -145,6 +147,11 @@ class AudioStream {
     var buffers =       [AudioQueueBufferRef?](repeating: nil, count: 4)  // Increased buffer count for stability
 
     var bufferByteSize: UInt32
+    private var framesPerBuffer: UInt32 = 0
+    // Frames handed to the queue since it was created; compared with the queue's
+    // timeline to know how much audio is still waiting to be played.
+    private let latencyLock = NSLock()
+    private var enqueuedFrames: Int64 = 0
     
 	var samplingrate = 22050
 	
@@ -166,6 +173,7 @@ class AudioStream {
         // Calculate buffer size based on sample rate to provide ~100ms of audio buffer for stability
         let bufferDurationSeconds: Float64 = 0.1  // 100ms for better stability and reduced stuttering
         let framesPerBuffer = UInt32(Float64(samplingrate) * bufferDurationSeconds)
+        self.framesPerBuffer = framesPerBuffer
         bufferByteSize = framesPerBuffer * dataFormat.mBytesPerFrame
         
         debugLog("Audio buffer: \(framesPerBuffer) frames, \(bufferByteSize) bytes", category: .audio)
@@ -188,6 +196,38 @@ class AudioStream {
         
         load()
     
+    }
+
+    func noteEnqueued(frames: Int64) {
+        latencyLock.lock()
+        enqueuedFrames += frames
+        latencyLock.unlock()
+    }
+
+    /// Seconds until OPM/ADPCM audio the emulation generates now is played: the core's
+    /// ring-buffer backlog plus what the AudioQueue holds but has not played yet.
+    /// nil while the queue is not running. Callable from any thread.
+    func pendingOutputSeconds() -> TimeInterval? {
+        guard let queue, samplingrate > 0 else { return nil }
+        var timeStamp = AudioTimeStamp()
+        var discontinuity: DarwinBoolean = false
+        guard AudioQueueGetCurrentTime(queue, nil, &timeStamp, &discontinuity) == noErr,
+              timeStamp.mFlags.contains(.sampleTimeValid), timeStamp.mSampleTime.isFinite else { return nil }
+        let played = Int64(timeStamp.mSampleTime)
+        let capacity = Int64(buffers.count) * Int64(framesPerBuffer)
+        latencyLock.lock()
+        var queued = enqueuedFrames - played
+        // The timeline restarts after a stop; re-anchor instead of reporting nonsense.
+        if queued > capacity {
+            enqueuedFrames = played + capacity
+            queued = capacity
+        } else if queued < 0 {
+            enqueuedFrames = played
+            queued = 0
+        }
+        latencyLock.unlock()
+        let backlog = max(0, Int64(X68000_GetAudioBacklogFrames()))
+        return Double(queued + backlog) / Double(samplingrate)
     }
 
     func tapRenderedAudio(_ audioData: UnsafeMutableRawPointer?, frameCount: Int) {

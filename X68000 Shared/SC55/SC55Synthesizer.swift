@@ -56,6 +56,9 @@ final class SC55Synthesizer {
     private var audioBuffers: [AVAudioPCMBuffer] = []
     var onFailure: ((String) -> Void)? // Installed and called on the main queue.
 
+    /// See InternalMIDISynthesizer.outputLatency (3 buffers of 8 ms).
+    var outputLatency: TimeInterval { 2.5 * Double(framesPerBuffer) / format.sampleRate }
+
     // Host output gain, independent of MIDI channel volume and firmware resets.
     // Read/write from the main thread; audio changes are serialized with playback.
     var volume: Double {

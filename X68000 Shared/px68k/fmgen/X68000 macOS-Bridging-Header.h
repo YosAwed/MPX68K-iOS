@@ -32,6 +32,7 @@ int X68000_GetImageInto(unsigned char* data, unsigned long capacityBytes);
 
 const int X68000_IsFrameDirty(void);
 void X68000_AudioCallBack(void* buffer, const unsigned int sample);
+long X68000_GetAudioBacklogFrames(void);
 void X68000_Key_Down( unsigned int vkcode );
 void X68000_Key_Up( unsigned int vkcode );
 // X68000 key codes sent directly (on-screen keyboard)

@@ -1056,6 +1056,10 @@ class GameScene: SKScene {
         }
         self.audioStream = AudioStream(samplingrate: sample)
         self.audioStream?.play()
+        // Internal MIDI modules follow the measured FM/ADPCM output latency.
+        midiController.fmOutputLatencyProvider = { [weak self] in
+            self?.audioStream?.pendingOutputSeconds()
+        }
 
         self.mouseSprite = self.childNode(withName: "//Mouse") as? SKSpriteNode
 

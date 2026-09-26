@@ -480,8 +480,11 @@ not SC-55mkII, SC-55ST or other Sound Canvas models. File size and empty-data ch
 catch common mistakes; they do not certify firmware authenticity or compatibility.
 ROMs are not supplied, downloaded, or copied into the app by MPX68K.
 
-The existing **MIDI Output Delay…** also applies to the internal module. Adjust it
-if MIDI and FM seem out of sync. **System → MIDI Output → SC-55 Volume…** opens a
+Internal modules are synchronized with FM/ADPCM automatically: MPX68K measures how
+long OPM/ADPCM audio takes to reach the output (core ring buffer plus AudioQueue)
+and delays internal MIDI by that amount minus the module's own buffering.
+**MIDI Output Delay…** is then used only for external MIDI, and for an internal module
+only while the FM latency cannot be measured. **System → MIDI Output → SC-55 Volume…** opens a
 live volume slider for the internal SC-55 only (0% mutes, 100% is the original
 output level). The setting is saved and survives app and sound-module resets.
 Use the Mac's volume controls for the overall output level.

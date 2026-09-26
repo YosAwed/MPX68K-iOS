@@ -9,6 +9,9 @@ protocol InternalMIDISynthesizer: AnyObject {
     func reset()
     func stop()
     func setPaused(_ paused: Bool)
+    /// Average time from a MIDI event being due to it being heard, excluding the
+    /// output device (shared with FM/ADPCM): 2 queued buffers + half a buffer of wait.
+    var outputLatency: TimeInterval { get }
 }
 
 extension SC55Synthesizer: InternalMIDISynthesizer {}
@@ -39,9 +42,12 @@ final class MT32Synthesizer: InternalMIDISynthesizer {
     private var generation = 0
     private var running = false
     private var pendingMIDI = SC55MIDIEventQueue()
-    private let framesPerBuffer: AVAudioFrameCount = 512
+    // 384 frames = 8 ms, the same period as the SC-55 (512 frames at 64 kHz).
+    private let framesPerBuffer: AVAudioFrameCount = 384
     private var audioBuffers: [AVAudioPCMBuffer] = []
     var onFailure: ((String) -> Void)? // Installed and called on the main queue.
+
+    var outputLatency: TimeInterval { 2.5 * Double(framesPerBuffer) / format.sampleRate }
 
     /// Description of the ROM set currently loaded (main thread).
     private(set) var loadedROMDescription: String?

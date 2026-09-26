@@ -374,11 +374,22 @@ Non-sandboxed development builds can store an ordinary folder bookmark if creati
 of a security-scoped bookmark is unavailable. The saved bookmark kind determines
 resolution options; ordinary bookmarks grant no additional filesystem access.
 
+## Internal MIDI synchronization with FM/ADPCM
+
+OPM/ADPCM audio waits in the core's ring buffer (`X68000_GetAudioBacklogFrames`) and
+then in four 100 ms AudioQueue buffers, so its latency is several hundred ms and
+varies by session. `AudioStream.pendingOutputSeconds()` adds the ring backlog to the
+frames enqueued but not yet played (AudioQueue timeline). Once per emulated frame
+`MIDIController` smooths this value and delays internal MIDI by it minus the active
+module's `outputLatency` (two queued 8 ms buffers plus half a buffer of scheduling
+wait). The shared output device latency cancels out. The fixed manual delay remains
+for external MIDI and as a fallback while the queue is not running.
+
 ## Internal MT-32 MIDI destination
 
 `MT32Synthesizer` is the second internal module (Munt libmt32emu 2.8.3 through
 `MT32Bridge.h`). It follows the SC-55 design: one instance on a serial worker,
-its own AVAudioEngine, three reusable 512-frame buffers, arrival deadlines checked
+its own AVAudioEngine, three reusable 384-frame (8 ms) buffers, arrival deadlines checked
 before each buffer, generation tokens, and iOS restart after configuration changes
 and interruptions. It renders at 48 kHz (`AnalogOutputMode_ACCURATE`) and needs no
 firmware warmup. Munt parses the byte stream itself, so the 1 KiB chunks produced by

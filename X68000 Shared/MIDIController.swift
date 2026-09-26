@@ -74,6 +74,42 @@ class MIDIController {
 
     private var configurationGeneration = 0
 
+    /// How long OPM/ADPCM audio generated now takes to be heard (set by GameScene).
+    /// Internal modules are delayed by this minus their own latency, so they sound
+    /// together with FM/ADPCM; the manual MIDI output delay then only applies to
+    /// external MIDI (and to internal modules while FM latency is unknown).
+    var fmOutputLatencyProvider: (() -> TimeInterval?)?
+    private var smoothedFMLatency: TimeInterval?
+    private var internalDelayMs: Double = 0
+    private var lastSyncLog: CFTimeInterval = 0
+
+    /// Current automatic delay for the internal module in ms (nil = using the manual delay).
+    private(set) var automaticInternalDelayMs: Double?
+
+    private func updateInternalDelay() {
+        guard let synth = activeSynthesizer else {
+            smoothedFMLatency = nil
+            automaticInternalDelayMs = nil
+            return
+        }
+        guard let fm = fmOutputLatencyProvider?(), fm.isFinite, fm >= 0, fm < 2 else {
+            internalDelayMs = outputDelayMs
+            automaticInternalDelayMs = nil
+            return
+        }
+        // The measurement moves in device-buffer steps; smooth it over ~1 s of frames.
+        let smoothed = smoothedFMLatency.map { $0 + (fm - $0) * 0.05 } ?? fm
+        smoothedFMLatency = smoothed
+        internalDelayMs = max(0, (smoothed - synth.outputLatency) * 1000)
+        automaticInternalDelayMs = internalDelayMs
+        let now = CFAbsoluteTimeGetCurrent()
+        if now - lastSyncLog > 30 {
+            lastSyncLog = now
+            warningLog(String(format: "Internal MIDI sync: FM/ADPCM latency %.0f ms, module %.0f ms, MIDI delay %.0f ms",
+                              smoothed * 1000, synth.outputLatency * 1000, internalDelayMs), category: .audio)
+        }
+    }
+
     /// ROM data read for one of the internal modules.
     private enum LoadedROMs {
         case sc55([Data])
@@ -608,7 +644,8 @@ class MIDIController {
         guard !event.isEmpty else { return }
 
         if let synth = activeSynthesizer {
-            synth.send(event, delayMs: outputDelayMs)
+            if automaticInternalDelayMs == nil { updateInternalDelay() }
+            synth.send(event, delayMs: internalDelayMs)
             return
         }
 
@@ -641,6 +678,8 @@ class MIDIController {
     }
 
     func flushDelayedEvents(_ now: CFTimeInterval = CFAbsoluteTimeGetCurrent()) {
+        // Called once per emulated frame: keep the internal module's delay current.
+        updateInternalDelay()
         guard pendingIndex < pendingEvents.count else { return }
         while pendingIndex < pendingEvents.count {
             let item = pendingEvents[pendingIndex]

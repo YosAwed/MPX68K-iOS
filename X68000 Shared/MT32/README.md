@@ -23,8 +23,8 @@ add firmware to this directory.
 - Debug and LCD messages are swallowed.
 
 The bridge is single-instance and not thread-safe: `MT32Synthesizer` serializes all
-calls on its worker queue. Audio uses three 512-frame buffers (32 ms), and MIDI
-deadlines are checked before every buffer, as for the SC-55. Library files are
+calls on its worker queue. Audio uses three 384-frame buffers (8 ms each, 24 ms,
+like the SC-55), and MIDI deadlines are checked before every buffer. Library files are
 built with -O2 in Debug as well as Release.
 
 Validation: `make -C tests/mt32` checks identification, pairing and failure paths
