@@ -1057,6 +1057,7 @@ class GameScene: SKScene {
         self.audioStream = AudioStream(samplingrate: sample)
         self.audioStream?.play()
         // Internal MIDI modules follow the measured FM/ADPCM output latency.
+        midiController.fmSampleRate = Double(sample)
         midiController.fmOutputLatencyProvider = { [weak self] in
             self?.audioStream?.pendingOutputSeconds()
         }
@@ -1626,8 +1627,10 @@ class GameScene: SKScene {
     private func flushMIDIBuffer() {
         let size = X68000_GetMIDIBufferSize()
         guard size > 0 else { return }
+        let times = X68000_GetMIDITimestamps()
+        let now = X68000_GetAudioFramePosition()
         guard let buffer = X68000_GetMIDIBuffer() else { return }
-        midiController.Send(buffer, Int(size))
+        midiController.sendStream(buffer, Int(size), frameTimes: times, nowFrame: now)
     }
 
     #if os(macOS)

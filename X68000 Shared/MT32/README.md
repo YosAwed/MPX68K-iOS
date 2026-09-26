@@ -35,6 +35,8 @@ make -C tests/mt32 rom ROM_DIR='/path/to/your/MT-32 ROM folder'
 ```
 
 This picks the same pair as the app, checks note-on/off, reset reproducibility,
-running status and a split SysEx, and measures 512-frame rendering under a
-36-note load. Real-ROM run (2026-09-26, MT-32 v1.07 + MT-32 PCM, Linux VM on the
+running status and a split SysEx, that a note sent between two partial renders
+starts at that frame (measured: 2 frames, 0.04 ms), and measures 512-frame
+rendering under a 36-note load. Munt's MIDI cable delay emulation is disabled:
+the host already times each message by when its last byte left the emulated board. Real-ROM run (2026-09-26, MT-32 v1.07 + MT-32 PCM, Linux VM on the
 Mac mini): passed; render median 0.14 ms per 10.7 ms of audio.

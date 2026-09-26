@@ -76,6 +76,9 @@ struct Instance {
             return false;
         }
         synth->setMIDIEventQueueSize(kMIDIQueueSize);
+        // The host already delivers each message when its last byte left the emulated
+        // MIDI board at 31.25 kbaud; Munt's own cable-delay emulation would add it twice.
+        synth->setMIDIDelayMode(MIDIDelayMode_IMMEDIATE);
         parser = new DefaultMidiStreamParser(*synth);
         report.overflowed = false;
         return true;

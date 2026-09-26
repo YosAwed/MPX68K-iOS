@@ -25,6 +25,7 @@
 #include "irqh.h"
 #include "midi.h"
 #include "m68000.h"
+#include "dswin.h"
 
 #define MIDIBUFFERS 1024			// 1024は流石に越えないでしょう^_^;
 #define MIDIBUFTIMER 3200			// 10MHz / (31.25K / 10bit) = 3200 が正解になります... 
@@ -651,20 +652,34 @@ BYTE FASTCALL MIDI_Read(DWORD adr)
 
 #define MAX_MIDI_BUFFER_SIZE 4096
 static BYTE s_midibuffer[MAX_MIDI_BUFFER_SIZE];
+// For each byte: when it has been received by the sound module, on the audio frame
+// timeline of X68000_GetAudioFramePosition(). Lets the host play it together with
+// the FM/ADPCM audio generated at the same emulated moment.
+static double s_miditimes[MAX_MIDI_BUFFER_SIZE];
 static long s_midibuffersize = 0;
-void X68000_AddMIDIBuffer( const BYTE data )
+static void AddMIDIBufferAt( const BYTE data, double frame )
 {
     // Prevent overflow: drop when buffer is full to avoid asserts/crash
     if (s_midibuffersize >= MAX_MIDI_BUFFER_SIZE) {
         return; // graceful drop on overflow
     }
     s_midibuffer[s_midibuffersize] = data;
+    s_miditimes[s_midibuffersize] = frame;
     s_midibuffersize++;
+}
+
+void X68000_AddMIDIBuffer( const BYTE data )
+{
+    AddMIDIBufferAt(data, X68000_GetAudioFramePosition());
 }
 
 static void AddDelayBuf(BYTE msg)
 {
-    X68000_AddMIDIBuffer(msg);
+    // The byte leaves the Tx FIFO after the bytes ahead of it, one per MIDIBUFTIMER
+    // (10 MHz clocks at 31.25 kbaud); it has been received once its stop bit is sent.
+    double clocks = (double)MIDI_BufTimer + (double)(MIDI_Buffered - 1) * MIDIBUFTIMER;
+    if (clocks < 0) clocks = 0;
+    AddMIDIBufferAt(msg, X68000_GetAudioFramePosition() + clocks * (double)DSound_GetRate() / 10000000.0);
 
 	int newptr = (DBufPtrW+1)%MIDIDELAYBUF;
 	if ( newptr!=DBufPtrR ) {
@@ -678,6 +693,11 @@ static void AddDelayBuf(BYTE msg)
 const long X68000_GetMIDIBufferSize(void)
 {
     return s_midibuffersize;
+}
+// Read before X68000_GetMIDIBuffer(), which empties the buffer.
+const double* X68000_GetMIDITimestamps(void)
+{
+    return s_miditimes;
 }
 unsigned char* X68000_GetMIDIBuffer(void)
 {

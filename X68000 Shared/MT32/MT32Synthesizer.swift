@@ -9,8 +9,9 @@ protocol InternalMIDISynthesizer: AnyObject {
     func reset()
     func stop()
     func setPaused(_ paused: Bool)
-    /// Average time from a MIDI event being due to it being heard, excluding the
-    /// output device (shared with FM/ADPCM): 2 queued buffers + half a buffer of wait.
+    /// Time from a MIDI event's deadline to it being heard, excluding the output device
+    /// (shared with FM/ADPCM): events are placed inside the buffer rendered behind the
+    /// two already queued ones.
     var outputLatency: TimeInterval { get }
 }
 
@@ -42,12 +43,14 @@ final class MT32Synthesizer: InternalMIDISynthesizer {
     private var generation = 0
     private var running = false
     private var pendingMIDI = SC55MIDIEventQueue()
+    private var bufferClock = InternalSynthBufferClock()
+    private var clockGeneration = -1
     // 384 frames = 8 ms, the same period as the SC-55 (512 frames at 64 kHz).
     private let framesPerBuffer: AVAudioFrameCount = 384
     private var audioBuffers: [AVAudioPCMBuffer] = []
     var onFailure: ((String) -> Void)? // Installed and called on the main queue.
 
-    var outputLatency: TimeInterval { 2.5 * Double(framesPerBuffer) / format.sampleRate }
+    var outputLatency: TimeInterval { 2 * Double(framesPerBuffer) / format.sampleRate }
 
     /// Description of the ROM set currently loaded (main thread).
     private(set) var loadedROMDescription: String?
@@ -303,15 +306,27 @@ final class MT32Synthesizer: InternalMIDISynthesizer {
     private func scheduleBuffer(_ buffer: AVAudioPCMBuffer, generation: Int) {
         guard running, self.generation == generation,
               let channels = buffer.floatChannelData else { return }
+        if clockGeneration != generation {
+            // A new buffer chain (start, reset, restart): re-anchor the buffer clock.
+            clockGeneration = generation
+            bufferClock.reset()
+        }
         // Munt parses a byte stream, so SysEx split into chunks is reassembled. Its event
         // queue is sized so that one period's input cannot overflow; never resend a chunk.
-        pendingMIDI.flush(dueBy: ProcessInfo.processInfo.systemUptime) { chunk in
+        // Events are delivered between partial renders, i.e. at their deadline's frame.
+        let frames = Int(framesPerBuffer)
+        let start = bufferClock.bufferStart(now: ProcessInfo.processInfo.systemUptime,
+                                            period: Double(frames) / format.sampleRate)
+        let rendered = pendingMIDI.render(bufferStart: start, frames: frames, sampleRate: format.sampleRate,
+                                          send: { chunk in
             if !X68MT32_Send(chunk, chunk.count) {
                 warningLog("MT-32 MIDI queue overflow; events dropped", category: .audio)
             }
             return true
-        }
-        guard X68MT32_Render(channels[0], channels[1], Int(framesPerBuffer)) else {
+        }, render: { offset, count in
+            X68MT32_Render(channels[0] + offset, channels[1] + offset, count)
+        })
+        guard rendered else {
             fail("MT-32音源の処理が停止しました。ROMセットを確認してください。")
             return
         }

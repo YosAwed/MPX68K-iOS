@@ -27,5 +27,7 @@ void DS_SetVolumeOPM(long vol);
 void DS_SetVolumeADPCM(long vol);
 void DS_SetVolumeMercury(long vol);
 void DSound_GetMonitorState(DSoundMonitorState* state);
+double X68000_GetAudioFramePosition(void);
+unsigned long DSound_GetRate(void);
 
 #endif /* dswin_h__ */

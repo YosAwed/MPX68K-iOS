@@ -118,6 +118,28 @@ int main(int argc, char **argv)
         if (chordMetrics.acRMS < 0.001) throw std::runtime_error("running-status chord silent");
         std::puts("MT-32 real-ROM note-on/off, reset and stream checks passed");
 
+        // Sample placement: a note sent between two partial renders starts at that frame
+        // (the host delivers MIDI at its position inside a buffer; no cable delay added).
+        if (!X68MT32_Reset()) throw std::runtime_error("reset failed");
+        render(47);
+        {
+            static float left[4800], right[4800];
+            const size_t at = 200;
+            if (!X68MT32_Render(left, right, at)) throw std::runtime_error("render failed");
+            const uint8_t on[] = {0x91, 72, 127};
+            X68MT32_Send(on, sizeof on);
+            if (!X68MT32_Render(left + at, right + at, 4800 - at)) throw std::runtime_error("render failed");
+            size_t onset = 4800;
+            for (size_t i = 0; i < 4800; ++i)
+                if (std::abs(left[i]) > 1e-4f || std::abs(right[i]) > 1e-4f) { onset = i; break; }
+            std::printf("note sent at frame %zu, first output at frame %zu (%.2f ms later)\n",
+                        at, onset, (double(onset) - at) / 48.0);
+            if (onset < at || onset > at + 96) throw std::runtime_error("note not placed at its frame");
+            const uint8_t off[] = {0x81, 72, 0};
+            X68MT32_Send(off, sizeof off);
+            render(200);
+        }
+
         // Full polyphony load on all parts plus rhythm.
         renderMilliseconds.clear();
         for (uint8_t ch = 1; ch < 10; ++ch)

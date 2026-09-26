@@ -52,7 +52,8 @@ were also exercised with this ROM set. No ROM files are stored in the repository
 Timing: internal MIDI delay now uses monotonic arrival deadlines serviced by the
 audio worker, rather than a second wait for a SpriteKit frame. Three reusable
 512-frame buffers replace the former 1024-frame buffers: queued audio is 24 ms
-instead of 48 ms, and MIDI delivery is checked every 8 ms of generated audio.
+instead of 48 ms. Each event is delivered between partial renders at the frame of
+its deadline (2026-09-26; previously all due events went at the buffer start).
 Configured MIDI output delay is retained for FM/ADPCM synchronization. The source
 X68000 emulator still hands off MIDI once per emulated frame.
 Host tests cover deadline ordering, long SysEx backpressure and cancellation.

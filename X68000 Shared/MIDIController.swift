@@ -79,6 +79,8 @@ class MIDIController {
     /// together with FM/ADPCM; the manual MIDI output delay then only applies to
     /// external MIDI (and to internal modules while FM latency is unknown).
     var fmOutputLatencyProvider: (() -> TimeInterval?)?
+    /// Sample rate of the FM/ADPCM audio timeline used by MIDI byte timestamps.
+    var fmSampleRate: Double = 0
     private var smoothedFMLatency: TimeInterval?
     private var internalDelayMs: Double = 0
     private var lastSyncLog: CFTimeInterval = 0
@@ -542,12 +544,25 @@ class MIDIController {
         sendStream(buffer, count)
     }
 
-    func sendStream(_ buffer: UnsafePointer<UInt8>?, _ count: Int) {
+    /// `frameTimes[i]`: when byte i reached the sound module, on the emulator's audio
+    /// frame timeline; `nowFrame`: the timeline position of this call. Internal modules
+    /// use them to place each message where it happened within the emulated frame.
+    func sendStream(_ buffer: UnsafePointer<UInt8>?, _ count: Int,
+                    frameTimes: UnsafePointer<Double>? = nil, nowFrame: Double = 0) {
         guard let buffer, count > 0 else { return }
         for i in 0..<count {
+            // Offset from now in seconds (negative: in the emulated past).
+            if let frameTimes, fmSampleRate > 0, frameTimes[i].isFinite {
+                currentByteOffset = (frameTimes[i] - nowFrame) / fmSampleRate
+            } else {
+                currentByteOffset = 0
+            }
             handleIncomingByte(buffer[i])
         }
+        currentByteOffset = 0
     }
+    /// Time offset of the byte being parsed; a message takes the offset of its last byte.
+    private var currentByteOffset: TimeInterval = 0
 
     private func handleIncomingByte(_ byte: UInt8) {
         if inSysEx {
@@ -645,7 +660,10 @@ class MIDIController {
 
         if let synth = activeSynthesizer {
             if automaticInternalDelayMs == nil { updateInternalDelay() }
-            synth.send(event, delayMs: internalDelayMs)
+            // Bytes arrive once per emulated frame; shift each message back (or forward,
+            // while still in the Tx FIFO) to where it happened relative to the FM audio.
+            let offsetMs = max(-1000, min(1000, currentByteOffset * 1000))
+            synth.send(event, delayMs: max(0, internalDelayMs + offsetMs))
             return
         }
 

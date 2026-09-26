@@ -84,6 +84,9 @@ void Memory_ClearSCSIMode(void);
 
 const long X68000_GetMIDIBufferSize();
 unsigned char* X68000_GetMIDIBuffer();
+// Per byte, on the X68000_GetAudioFramePosition() timeline (read before GetMIDIBuffer).
+const double* X68000_GetMIDITimestamps(void);
+double X68000_GetAudioFramePosition(void);
 
 // PPI (JoyportU) functions
 void PPI_SetJoyportUMode(int mode);

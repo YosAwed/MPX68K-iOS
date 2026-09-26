@@ -40,6 +40,47 @@ struct SC55MIDIEventQueue {
             head = 0
         }
     }
+
+    var nextDeadline: TimeInterval? { head < events.count ? events[head].deadline : nil }
+
+    /// Renders one buffer covering deadlines [start, start + frames / sampleRate) and
+    /// delivers every due event at its own position inside it, instead of all at the
+    /// buffer start. Late events go first. Returns false if rendering failed.
+    mutating func render(bufferStart start: TimeInterval, frames: Int, sampleRate: Double,
+                         send: ([UInt8]) -> Bool, render: (_ offset: Int, _ count: Int) -> Bool) -> Bool {
+        var offset = 0
+        while let deadline = nextDeadline {
+            let position = Int(((deadline - start) * sampleRate).rounded())
+            guard position < frames else { break }
+            if position > offset {
+                guard render(offset, position - offset) else { return false }
+                offset = position
+            }
+            let before = pendingBytes
+            flush(dueBy: deadline, send: send)
+            // Backpressure (SC-55 UART full): retry in the next buffer.
+            if pendingBytes == before { break }
+        }
+        return offset >= frames || render(offset, frames - offset)
+    }
+}
+
+/// Maps a player buffer to the host time its first frame corresponds to. Completion
+/// callbacks arrive with scheduling jitter; buffers are exactly one period apart, so
+/// follow the callback times loosely and re-anchor after a gap (start, reset, stall).
+struct InternalSynthBufferClock {
+    private var expected: TimeInterval?
+
+    mutating func reset() { expected = nil }
+
+    mutating func bufferStart(now: TimeInterval, period: TimeInterval) -> TimeInterval {
+        var start = now
+        if let expected, abs(now - expected) < period * 3 {
+            start = expected + (now - expected) * 0.1
+        }
+        expected = start + period
+        return start
+    }
 }
 
 /// One Nuked SC-55 instance; all core and audio scheduling work is serialized.
@@ -52,12 +93,14 @@ final class SC55Synthesizer {
     private var generation = 0
     private var running = false
     private var pendingMIDI = SC55MIDIEventQueue()
+    private var clockGeneration = -1
+    private var bufferClock = InternalSynthBufferClock()
     private let framesPerBuffer: AVAudioFrameCount = 512
     private var audioBuffers: [AVAudioPCMBuffer] = []
     var onFailure: ((String) -> Void)? // Installed and called on the main queue.
 
     /// See InternalMIDISynthesizer.outputLatency (3 buffers of 8 ms).
-    var outputLatency: TimeInterval { 2.5 * Double(framesPerBuffer) / format.sampleRate }
+    var outputLatency: TimeInterval { 2 * Double(framesPerBuffer) / format.sampleRate }
 
     // Host output gain, independent of MIDI channel volume and firmware resets.
     // Read/write from the main thread; audio changes are serialized with playback.
@@ -256,11 +299,21 @@ final class SC55Synthesizer {
     private func scheduleBuffer(_ buffer: AVAudioPCMBuffer, generation: Int) {
         guard running, self.generation == generation,
               let channels = buffer.floatChannelData else { return }
-        // Check deadlines every 8 ms of audio, independently of SpriteKit frames.
-        pendingMIDI.flush(dueBy: ProcessInfo.processInfo.systemUptime) { chunk in
-            X68SC55_Send(chunk, chunk.count)
+        if clockGeneration != generation {
+            // A new buffer chain (start, reset, restart): re-anchor the buffer clock.
+            clockGeneration = generation
+            bufferClock.reset()
         }
-        guard X68SC55_Render(channels[0], channels[1], Int(framesPerBuffer)) else {
+        // Deliver MIDI at its deadline within the buffer, independently of SpriteKit frames.
+        let frames = Int(framesPerBuffer)
+        let start = bufferClock.bufferStart(now: ProcessInfo.processInfo.systemUptime,
+                                            period: Double(frames) / format.sampleRate)
+        let rendered = pendingMIDI.render(bufferStart: start, frames: frames, sampleRate: format.sampleRate,
+                                          send: { chunk in X68SC55_Send(chunk, chunk.count) },
+                                          render: { offset, count in
+            X68SC55_Render(channels[0] + offset, channels[1] + offset, count)
+        })
+        guard rendered else {
             fail("SC-55音源の処理が停止しました。ROMセットを確認してください。")
             return
         }

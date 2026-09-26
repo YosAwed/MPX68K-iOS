@@ -381,9 +381,20 @@ then in four 100 ms AudioQueue buffers, so its latency is several hundred ms and
 varies by session. `AudioStream.pendingOutputSeconds()` adds the ring backlog to the
 frames enqueued but not yet played (AudioQueue timeline). Once per emulated frame
 `MIDIController` smooths this value and delays internal MIDI by it minus the active
-module's `outputLatency` (two queued 8 ms buffers plus half a buffer of scheduling
-wait). The shared output device latency cancels out. The fixed manual delay remains
-for external MIDI and as a fallback while the queue is not running.
+module's `outputLatency` (two queued 8 ms buffers). The shared output device latency
+cancels out. The fixed manual delay remains for external MIDI and as a fallback while
+the queue is not running.
+
+Within a frame, timing comes from the emulated MIDI board: every byte written to the
+Tx FIFO is stamped with the moment it is received by the module (FIFO backlog and
+31.25 kbaud transfer included) on the audio frame timeline
+(`X68000_GetAudioFramePosition`, advanced per scanline by `DSound_Send0`).
+`X68000_GetMIDITimestamps` returns the stamps with the per-frame MIDI buffer, and each
+message is shifted by the stamp of its last byte relative to the flush. On the module
+side, `SC55MIDIEventQueue.render` delivers each event between partial renders at the
+frame matching its deadline instead of at the buffer start; `InternalSynthBufferClock`
+maps buffers to host time, smoothing completion-callback jitter. Munt's own MIDI cable
+delay emulation is off (`MIDIDelayMode_IMMEDIATE`) because the stamps include it.
 
 ## Internal MT-32 MIDI destination
 
