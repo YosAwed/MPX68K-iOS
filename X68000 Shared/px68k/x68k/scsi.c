@@ -10,6 +10,7 @@
 #include	"m68000.h"
 #include	"scsi.h"
 #include	"sasi.h"
+#include	"sram.h"
 #include	"x68kmemory.h"
 #include	"crtc.h"
 #include	"palette.h"
@@ -68,6 +69,9 @@ static DWORD s_last_iocs_sig_d5 = 0;
 static DWORD s_last_iocs_sig_a1 = 0;
 static int s_scsi_log_total = 0;        // global log line counter
 #define SCSI_LOG_LIMIT 50000             // stop logging after this many lines
+static int s_scsi_log_mute = 0;          // suppress SCSI_LogText while set
+static int s_scsi_poll_log_count = 0;    // logged idle-poll device commands
+#define SCSI_POLL_LOG_LIMIT 32           // mute Human68k idle polling after this many
 
 #if MPX68K_HAVE_IOKIT_USB
 #define SCSIU_VENDOR_ID  0x04d8
@@ -167,6 +171,13 @@ static DWORD s_scsi_config_sector = 0;          // CONFIG.SYS sector number
 static DWORD s_scsi_config_size = 0;            // CONFIG.SYS file size (bytes)
 static int s_scsi_config_read_count = 0;        // CONFIG.SYS read counter
 static int s_scsi_config_boot_phase = 1;        // 1=boot phase, 0=normal
+// CONFIG.SYS without SHELL= and without a REM line to overwrite: the default
+// SHELL line is appended past the file end, and the directory entry's size is
+// enlarged in memory by s_scsi_config_append_len (never written to the image).
+static DWORD s_scsi_config_orig_size = 0;       // on-disk CONFIG.SYS size
+static DWORD s_scsi_config_append_pos = 0;      // insert offset within the file
+static DWORD s_scsi_config_append_len = 0;      // bytes added (0 = inactive)
+static int s_scsi_config_append_crlf = 0;       // prefix CRLF before SHELL line
 static int s_scsi_media_check_count = 0;        // MEDIA CHECK call counter
 static DWORD s_scsi_data_start_sector = 0;      // first data sector (partition-relative)
 static BYTE s_scsi_sec_per_clus = 1;            // sectors per cluster
@@ -1172,7 +1183,13 @@ SCSI_ImgSize(void)
 
 // ---------------------------------------------------------------------------------------
 //  合成SCSI ROM (外付けSCSI CZ-6BS1互換: $EA0000-$EA1FFF)
-//  - $EA0024: "SCSIEX" シグネチャ
+//  - $EA0024: "SCSIEX" シグネチャ（従来位置）
+//  - $EA0044: "SCSIEX" シグネチャ（実機位置: ROMは $EA0020 から始まる）
+//    FORMAT.X / SWITCH.X / HDID.X / HUMAN.SYS はここで外付けSCSIを検出する
+//  - $EA0020: ROMヘッダ P（= SCSI_SYNTH_ROMHDR_ENTRY）へのポインタ
+//    P-16: ドライバ組込みルーチン (HUMAN.SYS SCSIDEV が呼ぶ)
+//    P-12: IOCS初期化ルーチン (FORMAT.X が D1=0 で呼ぶ)
+//    P-8 : "Human68k"
 //  - $EA0068: "Human68k" シグネチャ
 //  - ブート/IOCSは $E9F800 トラップで C 側へ橋渡し
 // ---------------------------------------------------------------------------------------
@@ -1187,8 +1204,8 @@ static BYTE SCSIIMG[] = {
 	BE32(SCSI_SYNTH_INIT_ENTRY), BE32(SCSI_SYNTH_INIT_ENTRY),
 	BE32(SCSI_SYNTH_INIT_ENTRY), BE32(SCSI_SYNTH_INIT_ENTRY),
 
-	// $EA0020
-	BE32(SCSI_SYNTH_BOOT_ENTRY),
+	// $EA0020: ROMヘッダ P へのポインタ（実機の ROM 先頭と同じ規約）
+	BE32(SCSI_SYNTH_ROMHDR_ENTRY),
 
 	// $EA0024: "SCSIEX"（外付けSCSI ROM互換）
 	'S', 'C', 'S', 'I', 'E', 'X',
@@ -1198,17 +1215,21 @@ static BYTE SCSIIMG[] = {
 	0x00, 0xe9, 0xf8, 0x00,
 
 	// $EA0030: ブートエントリ
+	// $EA0044 の "SCSIEX" と重ならないよう jsr は絶対ショート形式にしている
+	// (動作は従来の jsr $00002000.l と同一)
 	0x13, 0xfc, 0x00, 0xff, 0x00, 0xe9, 0xf8, 0x00, // move.b #$ff,$e9f800
 	0x4a, 0x80,                                     // tst.l d0
-	0x66, 0x06,                                     // bne.s fail
-	0x4e, 0xb9, 0x00, 0x00, 0x20, 0x00,             // jsr $00002000
+	0x66, 0x04,                                     // bne.s fail
+	0x4e, 0xb8, 0x20, 0x00,                         // jsr $2000.w
 	0x70, 0xff,                                     // fail: moveq #-1,d0
 	0x4e, 0x75,                                     // rts
 
-	// $EA0046-$EA0057: reserved (18 bytes)
+	// $EA0044: "SCSIEX"（実機位置）
+	'S', 'C', 'S', 'I', 'E', 'X',
+
+	// $EA004A-$EA0057: reserved (14 bytes)
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 
 	// $EA0058: "SCSI" / $EA005C: init / $EA0060: iocs
 	// $EA0068: "Human68k"（実機互換位置）
@@ -1349,6 +1370,34 @@ static BYTE SCSIIMG[] = {
 	// ---------------------------------------------------------------
 	0x13, 0xfc, 0x00, 0x01, 0x00, 0xe9, 0xf8, 0x02, // move.b #$01,$E9F802
 	0x4e, 0x75,                                       // rts
+
+	// $EA012A-$EA012F: パディング (6 bytes)
+	0, 0, 0, 0, 0, 0,
+
+	// ---------------------------------------------------------------
+	// $EA0130: Human68k ROM ヘッダ ($EA0020 が指す P = $EA0140)
+	// ---------------------------------------------------------------
+	// P-16: ドライバ組込み。D2=-1 で「組込むドライバなし」を返す。
+	//       ドライバは C 側 (SCSI_LinkDeviceDriver) がリンクする。
+	BE32(SCSI_SYNTH_ROMHDR_DRVINST),
+	// P-12: IOCS初期化 (IOCS $F5 を登録)
+	BE32(SCSI_SYNTH_ROMHDR_IOCSINIT),
+	// P-8: "Human68k"
+	'H', 'u', 'm', 'a', 'n', '6', '8', 'k',
+
+	// $EA0140: P: ブートエントリへ
+	0x4e, 0xf9, BE32(SCSI_SYNTH_BOOT_ENTRY),        // jmp $EA0030
+	0x00, 0x00,                                     // パディング
+
+	// $EA0148: ドライバ組込みルーチン (4 bytes)
+	0x74, 0xff,                                     // moveq #-1,d2
+	0x4e, 0x75,                                     // rts
+
+	// $EA014C: IOCS初期化ルーチン (14 bytes)
+	0x23, 0xfc, BE32(SCSI_SYNTH_IOCS_ENTRY),        // move.l #$ea0080,$7d4.l
+	0x00, 0x00, 0x07, 0xd4,
+	0x70, 0x00,                                     // moveq #0,d0
+	0x4e, 0x75,                                     // rts
 };
 
 #undef BE32
@@ -1362,6 +1411,9 @@ void SCSI_Init(void)
 	int i;
 	BYTE tmp;
 	ZeroMemory(SCSIIPL, 0x2000);
+	// The external-SCSI SRAM view is only for the OS session that booted from
+	// the synthetic ROM; the IPL ROM of the next boot must see real SRAM.
+	SRAM_SetSCSIBoardOverlay(0);
 	if (SCSI_HasExternalROM()) {
 		p6logd("SCSI_Init: SCSIEXROM.DAT detected, will activate after kernel boot\n");
 	}
@@ -1412,6 +1464,10 @@ void SCSI_Init(void)
 	s_scsi_config_size = 0;
 	s_scsi_config_read_count = 0;
 	s_scsi_config_boot_phase = 1;
+	s_scsi_config_orig_size = 0;
+	s_scsi_config_append_pos = 0;
+	s_scsi_config_append_len = 0;
+	s_scsi_config_append_crlf = 0;
 	s_scsi_media_check_count = 0;
 	s_scsi_data_start_sector = 0;
 	s_scsi_sec_per_clus = 1;
@@ -1427,10 +1483,12 @@ void SCSI_Init(void)
 	SCSI_InvalidateTransferCache();
 	s_last_iocs_sig_valid = 0;
 	s_scsi_log_total = 0;
+	s_scsi_poll_log_count = 0;
+	s_scsi_log_mute = 0;
 	{
 		char buildTag[96];
 		snprintf(buildTag, sizeof(buildTag),
-			         "SCSI_BUILD devdrv-partoff-v14 %s %s",
+			         "SCSI_BUILD devdrv-partoff-v18 %s %s",
 		         __DATE__, __TIME__);
 		SCSI_LogText(buildTag);
 	}
@@ -1496,6 +1554,37 @@ static SCSI_LOGFN_ATTR void SCSI_EnsureLogDir(void)
 		mkdir(dirPath, 0755);
 	}
 #endif
+}
+
+// Bytes checked for "blank": covers the X68SCSI1 header, the partition table
+// and the first partition's boot sector, all of which FORMAT.X writes.
+#define SCSI_BLANK_CHECK_BYTES 0x10000
+
+int SCSI_IsBlankImageMounted(void)
+{
+	const BYTE* buf;
+	long size;
+	long i;
+
+#ifdef __APPLE__
+	if (X68000_GetStorageBusMode() != 1) {
+		return 0;  // SASI images and the SCSI-U bridge are never "blank"
+	}
+#endif
+	buf = s_disk_image_buffer[4];
+	size = s_disk_image_buffer_size[4];
+	if (buf == NULL || size <= 0) {
+		return 0;
+	}
+	if (size > SCSI_BLANK_CHECK_BYTES) {
+		size = SCSI_BLANK_CHECK_BYTES;
+	}
+	for (i = 0; i < size; i++) {
+		if (buf[i] != 0) {
+			return 0;
+		}
+	}
+	return 1;
 }
 
 int SCSI_IsROMPresent(void)
@@ -1577,6 +1666,7 @@ void SCSI_LogText(const char* text)
 #else
 	char logPath[512];
 	FILE* mirror;
+	if (s_scsi_log_mute) return;
 	if (s_scsi_log_total >= SCSI_LOG_LIMIT) return;
 	s_scsi_log_total++;
 	SCSI_GetLogPath(logPath, sizeof(logPath));
@@ -1983,6 +2073,145 @@ static void SCSI_NormalizeRootShortNames(DWORD bufAddr, DWORD startSec,
 	}
 }
 
+static const char k_scsi_default_shell_line[] = "SHELL=\\COMMAND.X /P\r\n";
+
+static DWORD SCSI_DefaultShellLineLen(void)
+{
+	return (DWORD)(sizeof(k_scsi_default_shell_line) - 1);
+}
+
+// Pointer to a partition sector inside the loaded image, or NULL when the
+// range is not resident (e.g. beyond the SCSI-U boot cache).
+static const BYTE* SCSI_PartitionSectorPtr(DWORD sec, DWORD len)
+{
+	BYTE* img = SCSI_ImgBuf();
+	long imgSize = SCSI_ImgSize();
+	unsigned long long off = (unsigned long long)sec * (unsigned long long)s_scsi_sector_size;
+
+	if (s_scsi_dev_absolute_sectors != 1) {
+		off += (unsigned long long)s_scsi_partition_byte_offset;
+	}
+	if (img == NULL || imgSize <= 0 || off + len > (unsigned long long)imgSize) {
+		return NULL;
+	}
+	return img + off;
+}
+
+static int SCSI_MatchLineKeyword(const BYTE* p, DWORD len, DWORD pos, const char* kw)
+{
+	DWORD k;
+	for (k = 0; kw[k] != '\0'; k++) {
+		BYTE c;
+		if (pos + k >= len) {
+			return 0;
+		}
+		c = p[pos + k];
+		if (c >= 'a' && c <= 'z') {
+			c = (BYTE)(c - ('a' - 'A'));
+		}
+		if (c != (BYTE)kw[k]) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
+// Decide whether the SHELL line has to be appended to CONFIG.SYS.  Only used
+// when there is neither a SHELL= line nor a REM line that the read-path patch
+// could overwrite in place.
+static void SCSI_PlanConfigShellAppend(DWORD cfgSec, DWORD fileSize)
+{
+	const BYTE* text;
+	DWORD textLen = fileSize;
+	DWORD i;
+	DWORD lineStart = 0;
+	DWORD shellLen = SCSI_DefaultShellLineLen();
+	DWORD insertLen;
+
+	s_scsi_config_orig_size = fileSize;
+	s_scsi_config_append_len = 0;
+	s_scsi_config_append_crlf = 0;
+
+	// Keep the patch within the first sector the kernel reads.
+	if (fileSize == 0 || fileSize >= s_scsi_sector_size) {
+		return;
+	}
+	text = SCSI_PartitionSectorPtr(cfgSec, s_scsi_sector_size);
+	if (text == NULL) {
+		return;
+	}
+	for (i = 0; i < fileSize; i++) {
+		if (text[i] == 0x1A || text[i] == 0x00) {
+			textLen = i;
+			break;
+		}
+	}
+	for (i = 0; i < textLen; i++) {
+		if (i == lineStart) {
+			while (i < textLen && (text[i] == ' ' || text[i] == '\t')) {
+				i++;
+			}
+			if (SCSI_MatchLineKeyword(text, textLen, i, "SHELL") ||
+			    SCSI_MatchLineKeyword(text, textLen, i, "REM ")) {
+				return;
+			}
+		}
+		if (i < textLen && text[i] == 0x0A) {
+			lineStart = i + 1;
+		}
+	}
+
+	s_scsi_config_append_crlf = (textLen > 0 && text[textLen - 1] != 0x0A) ? 1 : 0;
+	insertLen = shellLen + (s_scsi_config_append_crlf ? 2U : 0U);
+	// Anything after the text (normally a single ^Z) is kept behind the line.
+	if (fileSize + insertLen > s_scsi_sector_size) {
+		return;
+	}
+	s_scsi_config_append_pos = textLen;
+	s_scsi_config_append_len = insertLen;
+}
+
+// Undo the in-memory CONFIG.SYS size enlargement in a root directory buffer
+// that is about to be written back to the image.
+static void SCSI_RestoreConfigSizeInDirBuf(BYTE* buf, DWORD startSec,
+                                           DWORD count, DWORD secSize)
+{
+	DWORD s;
+	DWORD rootStart = s_scsi_root_dir_start_sector;
+	DWORD rootCount = s_scsi_root_dir_sector_count;
+	DWORD patched = s_scsi_config_orig_size + s_scsi_config_append_len;
+
+	if (s_scsi_config_append_len == 0 || rootCount == 0 || secSize < 32) {
+		return;
+	}
+	for (s = 0; s < count; s++) {
+		DWORD sec = startSec + s;
+		DWORD off;
+		if (sec < rootStart || sec >= rootStart + rootCount) {
+			continue;
+		}
+		for (off = 0; off + 32 <= secSize; off += 32) {
+			BYTE* ent = buf + (s * secSize) + off;
+			DWORD size;
+			if (ent[0] == 0x00) {
+				break;
+			}
+			if (memcmp(ent, "CONFIG  SYS", 11) != 0) {
+				continue;
+			}
+			size = (DWORD)ent[0x1C] | ((DWORD)ent[0x1D] << 8) |
+			       ((DWORD)ent[0x1E] << 16) | ((DWORD)ent[0x1F] << 24);
+			if (size == patched) {
+				ent[0x1C] = (BYTE)(s_scsi_config_orig_size & 0xFF);
+				ent[0x1D] = (BYTE)((s_scsi_config_orig_size >> 8) & 0xFF);
+				ent[0x1E] = (BYTE)((s_scsi_config_orig_size >> 16) & 0xFF);
+				ent[0x1F] = (BYTE)((s_scsi_config_orig_size >> 24) & 0xFF);
+				SCSI_LogText("SCSI_DEV WRITE restored on-disk CONFIG.SYS size");
+			}
+		}
+	}
+}
+
 static void SCSI_LogRootConfigEntry(DWORD bufAddr, DWORD startSec,
                                     DWORD count, DWORD secSize)
 {
@@ -2065,6 +2294,16 @@ static void SCSI_LogRootConfigEntry(DWORD bufAddr, DWORD startSec,
 				               ((DWORD)(firstCluster - 2) * (DWORD)s_scsi_sec_per_clus);
 				s_scsi_config_sector = cfgSec;
 				s_scsi_config_size = fileSize;
+				SCSI_PlanConfigShellAppend(cfgSec, fileSize);
+				if (s_scsi_config_append_len != 0) {
+					DWORD newSize = fileSize + s_scsi_config_append_len;
+					Memory_WriteB(ent + 0x1C, (BYTE)(newSize & 0xFF));
+					Memory_WriteB(ent + 0x1D, (BYTE)((newSize >> 8) & 0xFF));
+					Memory_WriteB(ent + 0x1E, (BYTE)((newSize >> 16) & 0xFF));
+					Memory_WriteB(ent + 0x1F, (BYTE)((newSize >> 24) & 0xFF));
+					s_scsi_config_size = newSize;
+					SCSI_LogText("SCSI_DEV CONFIG no SHELL/REM line: appending default SHELL");
+				}
 				snprintf(line, sizeof(line),
 				         "SCSI_DEV CONFIG map sec=%u size=%u spc=%u dataStart=%u",
 				         (unsigned int)s_scsi_config_sector,
@@ -2122,6 +2361,11 @@ static void SCSI_HandleBoot(void)
 	}
 	imgBuf = SCSI_ImgBuf();
 	imgSize = (DWORD)SCSI_ImgSize();
+	if (SCSI_IsBlankImageMounted()) {
+		SCSI_LogText("SCSI_BOOT: image is blank (not formatted)");
+		C68k_Set_DReg(&C68K, 0, 0xFFFFFFFF);
+		return;
+	}
 
 	blockSize = SCSI_GetImageBlockSize();
 	if (blockSize == 0) {
@@ -2341,6 +2585,14 @@ void SCSI_InjectBoot(void)
 	imgBuf = SCSI_ImgBuf();
 	imgSize = (DWORD)SCSI_ImgSize();
 
+	// A freshly created (all-zero) image has no boot code; injecting it would
+	// jump into zeros.  Leave the IPL ROM to boot from floppy so FORMAT.X can
+	// initialise the disk.
+	if (SCSI_IsBlankImageMounted()) {
+		SCSI_LogText("SCSI_INJECT_BOOT: image is blank (not formatted) - not booting from SCSI");
+		return;
+	}
+
 	blockSize = SCSI_GetImageBlockSize();
 	if (blockSize == 0) {
 		blockSize = (X68000_GetStorageBusMode() == 2) ? SCSIU_GetBlockSize() : 512;
@@ -2459,6 +2711,9 @@ void SCSI_CommitDeferredBoot(void)
 	C68k_Set_DReg(&C68K, 5, s_scsi_deferred_d5);
 	C68k_Set_SR(&C68K, 0x2000);
 	Memory_SetSCSIMode();
+	// FORMAT.X / SWITCH.X / HDID.X require $ED006F='V' and $ED0070 bit3
+	// (external SCSI) in addition to the $EA0044 "SCSIEX" signature.
+	SRAM_SetSCSIBoardOverlay(1);
 	C68k_Set_PC(&C68K, s_scsi_deferred_boot_addr);
 	cpu_setOPbase24(s_scsi_deferred_boot_addr);
 
@@ -2482,6 +2737,27 @@ void SCSI_CommitDeferredBoot(void)
 //   d1.b = SCSI IOCS コマンド番号
 //   d0.l = ステータス (0 成功, -1 失敗)
 // -----------------------------------------------------------------------
+static int SCSI_IOCSTargetAbsent(BYTE cmd, DWORD d4)
+{
+	DWORD id = d4 & 0xffffU;
+#ifdef __APPLE__
+	if (X68000_GetStorageBusMode() == 2) {
+		return 0;  // real SCSI bus via bridge: the device decides
+	}
+#endif
+	switch (cmd) {
+	case 0x01: case 0xA1: case 0xA2:  // _S_SELECT / _S_SELECTA
+	case 0x20:  // _S_INQUIRY
+	case 0x24:  // _S_TESTUNIT
+	case 0x25:  // _S_READCAP
+	case 0x29:  // _S_MODESENSE
+	case 0x2c:  // _S_REQUEST
+		return (id >= 1 && id <= 7);
+	default:
+		return 0;
+	}
+}
+
 static void SCSI_HandleIOCS(BYTE cmd)
 {
 #if defined(HAVE_C68K)
@@ -2501,6 +2777,19 @@ static void SCSI_HandleIOCS(BYTE cmd)
 	         cmd, (unsigned int)d1, (unsigned int)d2, (unsigned int)d3, (unsigned int)d4,
 	         (unsigned int)d5, (unsigned int)a1);
 	SCSI_LogText(logLine);
+
+	// The synthetic bus has a single disk at SCSI ID 0.  Probe commands carry
+	// the target ID in d4; without this check every ID answered and FORMAT.X
+	// listed IDs 0-6 as the same disk.  Transfer commands are not filtered
+	// because some callers put byte/block hints in d4 (see SCSI_XFER_BLK_*).
+	if (SCSI_IOCSTargetAbsent(cmd, d4)) {
+		snprintf(logLine, sizeof(logLine),
+		         "SCSI_IOCS cmd=$%02X d4=%08X -> no device at this ID",
+		         cmd, (unsigned int)d4);
+		SCSI_LogText(logLine);
+		C68k_Set_DReg(&C68K, 0, 0xFFFFFFFF);
+		return;
+	}
 
 		switch (cmd) {
 	case 0x20: {  // _S_INQUIRY
@@ -4107,7 +4396,36 @@ static int SCSI_ReadBPBFromImage(BYTE* outBpb, DWORD* outPartOffset)
 //     +$12: count / BPB pointer (long, BE)
 //     +$16: start sector (long, BE)
 // -----------------------------------------------------------------------
+static void SCSI_HandleDeviceCommandImpl(void);
+
 static void SCSI_HandleDeviceCommand(void)
+{
+#if defined(HAVE_C68K)
+	// Human68k polls MEDIACHECK (cmd=1) and IOCTL sub=9 (cmd=5) endlessly
+	// while idle; after a few rounds, mute them so the log limit is spent on
+	// the operations we actually want to trace (e.g. FORMAT.X).
+	DWORD reqpkt = SCSI_Mask24(s_scsi_dev_reqpkt);
+	int isPoll = 0;
+	if (reqpkt != 0 && SCSI_IsLinearRamRange(reqpkt, 0x0E)) {
+		BYTE cmd = Memory_ReadB(reqpkt + 2);
+		isPoll = (cmd == 1) || (cmd == 5 && Memory_ReadB(reqpkt + 0x0D) == 9);
+	}
+	if (isPoll) {
+		if (s_scsi_poll_log_count < SCSI_POLL_LOG_LIMIT) {
+			s_scsi_poll_log_count++;
+			if (s_scsi_poll_log_count == SCSI_POLL_LOG_LIMIT) {
+				SCSI_LogText("SCSI_DEV idle polling (cmd=1, cmd=5 sub=9) log muted from here");
+			}
+		} else {
+			s_scsi_log_mute = 1;
+		}
+	}
+	SCSI_HandleDeviceCommandImpl();
+	s_scsi_log_mute = 0;
+#endif
+}
+
+static void SCSI_HandleDeviceCommandImpl(void)
 {
 #if defined(HAVE_C68K)
 	DWORD reqpkt = s_scsi_dev_reqpkt;
@@ -5286,6 +5604,29 @@ static void SCSI_HandleDeviceCommand(void)
 				}
 			}
 
+			// No REM line to overwrite: append the SHELL line at the end of
+			// the text. The directory entry size was enlarged to match.
+			if (startSec == s_config_sector && s_config_sector != 0 &&
+			    s_scsi_config_append_len != 0 &&
+			    s_scsi_config_orig_size + s_scsi_config_append_len <= (DWORD)byteCount) {
+				DWORD pos = s_scsi_config_append_pos;
+				DWORD tail = s_scsi_config_orig_size - pos;
+				DWORD shellLen = SCSI_DefaultShellLineLen();
+				DWORD k;
+				// Move the trailing bytes (normally ^Z) behind the new line.
+				for (k = tail; k > 0; k--) {
+					Memory_WriteB(bufAddr + pos + s_scsi_config_append_len + k - 1,
+					              Memory_ReadB(bufAddr + pos + k - 1));
+				}
+				if (s_scsi_config_append_crlf) {
+					Memory_WriteB(bufAddr + pos++, 0x0D);
+					Memory_WriteB(bufAddr + pos++, 0x0A);
+				}
+				for (k = 0; k < shellLen; k++) {
+					Memory_WriteB(bufAddr + pos + k, (BYTE)k_scsi_default_shell_line[k]);
+				}
+			}
+
 			// If CONFIG.SYS has no SHELL= line, inject a default.
 			// Without SHELL=, AUTOEXEC.BAT runs in a child process and
 			// environment changes such as PATH are lost.
@@ -5524,6 +5865,7 @@ static void SCSI_HandleDeviceCommand(void)
 			}
 			for (i = 0; i < (DWORD)byteCount; i++)
 				tmpBuf[i] = Memory_ReadB(bufAddr + i);
+			SCSI_RestoreConfigSizeInDirBuf(tmpBuf, startSec, count, secSize);
 			if (!SCSIU_WriteBlocks(physLBA, physBlks, secSize, tmpBuf)) {
 				free(tmpBuf);
 				SCSI_SetReqStatus(reqpkt, 0, 0x02);
@@ -5553,6 +5895,8 @@ static void SCSI_HandleDeviceCommand(void)
 		for (i = 0; i < (DWORD)byteCount; i++) {
 			s_disk_image_buffer[4][(DWORD)byteOffset + i] = Memory_ReadB(bufAddr + i);
 		}
+		SCSI_RestoreConfigSizeInDirBuf(s_disk_image_buffer[4] + (DWORD)byteOffset,
+		                               startSec, count, secSize);
 		SASI_SetDirtyFlag(0);
 
 		SCSI_SetReqStatus(reqpkt, 1, 0x00);
