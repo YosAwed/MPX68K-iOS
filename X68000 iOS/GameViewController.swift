@@ -420,6 +420,7 @@ final class GameViewController: UIViewController {
         var elements: [UIMenuElement] = (0..<2).map(floppyMenu(for:))
         elements.append(hardDiskMenu())
         if let midi = midiMenu() { elements.append(midi) }
+        if let speed = speedMenu() { elements.append(speed) }
         let reset = UIAction(title: "リセット", image: UIImage(systemName: "arrow.counterclockwise")) { [weak self] _ in
             self?.gameScene?.resetSystem()
         }
@@ -481,6 +482,38 @@ final class GameViewController: UIViewController {
             menu.subtitle = rom
         }
         return menu
+    }
+
+    /// CPU clock (saved, same as the macOS Clock menu) and emulation speed (Turbo / No-Wait, this session only).
+    private func speedMenu() -> UIMenu? {
+        guard let scene = gameScene else { return nil }
+        let clock = Int(UserDefaults.standard.string(forKey: "clock") ?? "") ?? 24
+        let speed = scene.emulationSpeed
+
+        let clocks: [(String, Int)] = [
+            ("1 MHz", 1), ("10 MHz", 10), ("16 MHz", 16), ("24 MHz（標準）", 24),
+            ("40 MHz", 40), ("50 MHz（最大）", 50),
+        ]
+        let clockActions = clocks.map { title, mhz in
+            UIAction(title: title, state: clock == mhz ? .on : .off) { [weak scene] _ in
+                scene?.setCPUClock(mhz)
+            }
+        }
+        let speeds: [(String, Int)] = [
+            ("等速", 1), ("ターボ 2倍", 2), ("ターボ 3倍", 3),
+            ("ターボ 4倍", 4), ("ターボ 5倍", 5), ("ノーウェイト", 0),
+        ]
+        let speedActions = speeds.map { title, value in
+            UIAction(title: title, state: speed == value ? .on : .off) { [weak scene] _ in
+                scene?.setEmulationSpeed(value)
+            }
+        }
+
+        let speedTitle = speeds.first { $0.1 == speed }?.0 ?? "等速"
+        return UIMenu(title: "速度：\(clock) MHz・\(speedTitle)", image: UIImage(systemName: "speedometer"), children: [
+            UIMenu(title: "CPU クロック", options: .displayInline, children: clockActions),
+            UIMenu(title: "エミュレーション速度", options: .displayInline, children: speedActions),
+        ])
     }
 
     private func showInternalSynthUnavailable(_ kind: MIDIController.InternalSynth) {
