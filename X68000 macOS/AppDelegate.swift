@@ -237,7 +237,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSMenu
         }
     }
 
-    private func mountSCSI0Async(url: URL) {
+    private func mountSCSI0Async(url: URL, onMounted: (() -> Void)? = nil) {
         let accessible = url.startAccessingSecurityScopedResource()
         let bookmarkData = try? url.bookmarkData(
             options: .withSecurityScope,
@@ -287,6 +287,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSMenu
                     infoLog("SCSI(ID0) image mounted asynchronously: \(url.lastPathComponent)", category: .fileSystem)
                     self.appendSCSILog("MAC_SCSI_MOUNT calling X68000_Reset")
                     X68000_Reset()
+                    onMounted?()
                 } else {
                     warningLog("SCSI(ID0) async mount failed for \(url.path)", category: .fileSystem)
                     self.showSCSIMountFailureAlert(url: url,
@@ -669,6 +670,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSMenu
         ejectDrive0Item.identifier = NSUserInterfaceItemIdentifier("FDD-eject-drive-A")
         fddMenu.addItem(ejectDrive0Item)
 
+        let protectDrive0Item = NSMenuItem(title: "Write-Protect Drive 0", action: #selector(toggleFDDWriteProtect(_:)), keyEquivalent: "")
+        protectDrive0Item.target = self
+        protectDrive0Item.representedObject = 0
+        protectDrive0Item.identifier = NSUserInterfaceItemIdentifier("FDD-protect-drive-A")
+        fddMenu.addItem(protectDrive0Item)
+
         fddMenu.addItem(NSMenuItem.separator())
 
         // Drive 1
@@ -681,6 +688,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSMenu
         ejectDrive1Item.target = self
         ejectDrive1Item.identifier = NSUserInterfaceItemIdentifier("FDD-eject-drive-B")
         fddMenu.addItem(ejectDrive1Item)
+
+        let protectDrive1Item = NSMenuItem(title: "Write-Protect Drive 1", action: #selector(toggleFDDWriteProtect(_:)), keyEquivalent: "")
+        protectDrive1Item.target = self
+        protectDrive1Item.representedObject = 1
+        protectDrive1Item.identifier = NSUserInterfaceItemIdentifier("FDD-protect-drive-B")
+        fddMenu.addItem(protectDrive1Item)
 
         mainMenu.addItem(fddMenuItem)
 
@@ -758,6 +771,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSMenu
         scsiEject0.identifier = NSUserInterfaceItemIdentifier("SCSI0-eject")
         scsiDevicesMenu.addItem(scsiEject0)
 
+        scsiDevicesMenu.addItem(NSMenuItem.separator())
+
+        let scsiCreate0 = NSMenuItem(title: "Create Empty SCSI HDD...", action: #selector(createEmptySCSIHDD(_:)), keyEquivalent: "")
+        scsiCreate0.target = self
+        scsiCreate0.identifier = NSUserInterfaceItemIdentifier("SCSI0-create")
+        scsiDevicesMenu.addItem(scsiCreate0)
+
         hddMenu.addItem(scsiDevicesMenuItem)
 
         let scsiUDevicesMenuItem = NSMenuItem(title: "SCSI-U Device", action: nil, keyEquivalent: "")
@@ -789,37 +809,38 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSMenu
         let clockMenu = NSMenu(title: "Clock")
         clockMenuItem.submenu = clockMenu
 
-        let clk1 = NSMenuItem(title: "1 MHz", action: #selector(GameViewController.setClock1MHz(_:)), keyEquivalent: "1")
-        clk1.keyEquivalentModifierMask = [.control]
-        clk1.target = nil
-        clockMenu.addItem(clk1)
+        // Target the app delegate directly: nil-targeted items depend on the
+        // responder chain and go disabled whenever the game window isn't key.
+        let clocks: [(String, Int, String)] = [
+            ("1 MHz", 1, "1"), ("10 MHz", 10, "2"), ("16 MHz", 16, "3"),
+            ("24 MHz (Default)", 24, "4"), ("", 0, ""),
+            ("40 MHz", 40, "5"), ("50 MHz (Max)", 50, "6"),
+        ]
+        for (title, mhz, key) in clocks {
+            guard mhz > 0 else {
+                clockMenu.addItem(NSMenuItem.separator())
+                continue
+            }
+            let item = NSMenuItem(title: title, action: #selector(selectCPUClock(_:)), keyEquivalent: key)
+            item.keyEquivalentModifierMask = [.control]
+            item.target = self
+            item.representedObject = mhz
+            clockMenu.addItem(item)
+        }
 
-        let clk10 = NSMenuItem(title: "10 MHz", action: #selector(GameViewController.setClock10MHz(_:)), keyEquivalent: "2")
-        clk10.keyEquivalentModifierMask = [.control]
-        clk10.target = nil
-        clockMenu.addItem(clk10)
-
-        let clk16 = NSMenuItem(title: "16 MHz", action: #selector(GameViewController.setClock16MHz(_:)), keyEquivalent: "3")
-        clk16.keyEquivalentModifierMask = [.control]
-        clk16.target = nil
-        clockMenu.addItem(clk16)
-
-        let clk24 = NSMenuItem(title: "24 MHz (Default)", action: #selector(GameViewController.setClock24MHz(_:)), keyEquivalent: "4")
-        clk24.keyEquivalentModifierMask = [.control]
-        clk24.target = nil
-        clockMenu.addItem(clk24)
-
+        // Speed: extra emulated frames per displayed frame, on top of the
+        // CPU clock above (which now runs at its nominal rate).
         clockMenu.addItem(NSMenuItem.separator())
-
-        let clk40 = NSMenuItem(title: "40 MHz", action: #selector(GameViewController.setClock40MHz(_:)), keyEquivalent: "5")
-        clk40.keyEquivalentModifierMask = [.control]
-        clk40.target = nil
-        clockMenu.addItem(clk40)
-
-        let clk50 = NSMenuItem(title: "50 MHz (Max)", action: #selector(GameViewController.setClock50MHz(_:)), keyEquivalent: "6")
-        clk50.keyEquivalentModifierMask = [.control]
-        clk50.target = nil
-        clockMenu.addItem(clk50)
+        let speeds: [(String, Int)] = [
+            ("Normal Speed", 1), ("Turbo 2x", 2), ("Turbo 3x", 3),
+            ("Turbo 4x", 4), ("Turbo 5x", 5), ("No-Wait", 0),
+        ]
+        for (title, speed) in speeds {
+            let item = NSMenuItem(title: title, action: #selector(setEmulationSpeed(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = speed
+            clockMenu.addItem(item)
+        }
 
         mainMenu.addItem(clockMenuItem)
 
@@ -1873,6 +1894,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSMenu
                 }
                 // Enable only in SCSI mode
                 item.isEnabled = (busMode == .scsi)
+            } else if itemId == "SCSI0-create" {
+                item.isEnabled = (busMode == .scsi)
             } else if itemId == "SCSI0-eject" || title.contains("Eject SCSI (ID 0)") {
                 if scsi0.ready {
                     if let name = scsi0.path, !name.isEmpty {
@@ -2246,6 +2269,25 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSMenu
         autoSaveDiskStateIfNeeded()
     }
     
+    @IBAction func selectCPUClock(_ sender: NSMenuItem) {
+        guard let mhz = sender.representedObject as? Int else { return }
+        gameViewController?.gameScene?.setCPUClock(mhz)
+    }
+
+    @IBAction func setEmulationSpeed(_ sender: NSMenuItem) {
+        guard let speed = sender.representedObject as? Int else { return }
+        gameViewController?.gameScene?.setEmulationSpeed(speed)
+    }
+
+    @IBAction func toggleFDDWriteProtect(_ sender: NSMenuItem) {
+        guard let drive = sender.representedObject as? Int,
+              X68000_IsFDDMounted(drive) != 0, X68000_IsFDDImageReadOnly(drive) == 0 else { return }
+        let protect = X68000_IsFDDWriteProtected(drive) == 0
+        X68000_SetFDDWriteProtect(drive, protect ? 1 : 0)
+        infoLog("FDD drive \(drive) write-protect \(protect ? "ON" : "OFF")", category: .fileSystem)
+        autoSaveDiskStateIfNeeded()
+    }
+
     // MARK: - HDD Menu Actions
     @IBAction func openHDD(_ sender: Any) {
         guard coreGetStorageBusMode() == .sasi else {
@@ -2436,6 +2478,35 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSMenu
         }
 
         presentSCSIOpenPanel()
+    }
+
+    @objc func createEmptySCSIHDD(_ sender: Any?) {
+        guard coreGetStorageBusMode() == .scsi else { return }
+        guard let gameVC = gameViewController else { return }
+        gameVC.presentCreateEmptySCSIHDD { [weak self] url in
+            guard let self = self, let url = url else { return }
+            self.mountSCSI0Async(url: url) { [weak self] in
+                self?.showEmptySCSIHDDNextSteps(url: url)
+            }
+        }
+    }
+
+    private func showEmptySCSIHDDNextSteps(url: URL) {
+        let alert = NSAlert()
+        alert.messageText = "空の SCSI ハードディスクをマウントしました"
+        alert.informativeText = """
+        \(url.lastPathComponent) は未フォーマットです。
+        1. Human68k のシステムフロッピーをドライブ 0 に入れて起動します。
+        2. FORMAT.X で SCSI 装置 (ID 0) を初期化し、システムを転送します。
+        3. フロッピーを取り出してリセットすると、SCSI から起動します。
+        """
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        if let window = gameViewController?.view.window ?? NSApplication.shared.mainWindow {
+            alert.beginSheetModal(for: window, completionHandler: nil)
+        } else {
+            alert.runModal()
+        }
     }
 
     @objc func ejectSCSI0(_ sender: Any?) {
@@ -3159,6 +3230,23 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSMenu
     
     // MARK: - Menu Validation
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(selectCPUClock(_:)) {
+            let current = Int(UserDefaults.standard.string(forKey: "clock") ?? "") ?? 24
+            menuItem.state = (menuItem.representedObject as? Int) == current ? .on : .off
+            return gameViewController?.gameScene != nil
+        }
+        if menuItem.action == #selector(setEmulationSpeed(_:)) {
+            let current = gameViewController?.gameScene?.emulationSpeed ?? 1
+            menuItem.state = (menuItem.representedObject as? Int) == current ? .on : .off
+            return gameViewController?.gameScene != nil
+        }
+        if menuItem.action == #selector(toggleFDDWriteProtect(_:)) {
+            guard let drive = menuItem.representedObject as? Int else { return false }
+            let mounted = X68000_IsFDDMounted(drive) != 0
+            menuItem.state = (mounted && X68000_IsFDDWriteProtected(drive) != 0) ? .on : .off
+            // A read-only image file stays protected; nothing to toggle.
+            return mounted && X68000_IsFDDImageReadOnly(drive) == 0
+        }
         if menuItem.action == #selector(testSC55Sound(_:)) || menuItem.action == #selector(showSC55Volume(_:)) {
             return gameViewController?.gameScene?.midiOutputController.activeInternalSynth != nil
         }
@@ -3194,26 +3282,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSMenu
             let isRecording = gameViewController?.isScreenRecording ?? false
             menuItem.title = isRecording ? "Stop Recording" : "Start Recording..."
             return true
-        } else if menuItem.menu?.title == "Clock" {
-            // Reflect current clock selection via checkmark
-            let currentMHz: Int = {
-                if let s = UserDefaults.standard.string(forKey: "clock"), let v = Int(s) { return v }
-                return 24
-            }()
-            let title = menuItem.title
-            let targetMHz: Int? = (
-                title.contains("1 MHz") ? 1 :
-                title.contains("10 MHz") ? 10 :
-                title.contains("16 MHz") ? 16 :
-                title.contains("24 MHz") ? 24 :
-                title.contains("40 MHz") ? 40 :
-                title.contains("50 MHz") ? 50 :
-                nil
-            )
-            if let mhz = targetMHz {
-                menuItem.state = (mhz == currentMHz) ? .on : .off
-            }
-            return true
         } else if menuItem.identifier?.rawValue == "Settings-auto-mount" || menuItem.title.contains("Auto-Mount Disk Images") {
             // Legacy auto-mount menu item - keep for compatibility
             let isAutoMountEnabled = !UserDefaults.standard.bool(forKey: "DisableAutoMount")
@@ -3246,6 +3314,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSMenu
                 return busMode == .scsi
             case "SCSI0-eject":
                 return busMode == .scsi && coreGetSCSI0State().ready
+            case "SCSI0-create":
+                return busMode == .scsi
             case "SCSIU-status":
                 return false
             case "SCSIU-connect":

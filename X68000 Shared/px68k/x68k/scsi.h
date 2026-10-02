@@ -23,8 +23,14 @@ extern	BYTE	SCSIROM_DAT[0x2000];
 #define SCSI_SYNTH_IOCS_DIRECT 0x00ea00f2
 #define SCSI_SYNTH_IOCS_FF_FALLBACK SCSI_SYNTH_IOCS_FN10_OK
 #define SCSI_SYNTH_DEVHDR_ADDR  0x00ea0100
+// Human68k ROM header pointed to by $EA0020 (P-16/P-12/P-8 convention)
+#define SCSI_SYNTH_ROMHDR_ENTRY    0x00ea0140
+#define SCSI_SYNTH_ROMHDR_DRVINST  0x00ea0148
+#define SCSI_SYNTH_ROMHDR_IOCSINIT 0x00ea014c
 
 int SCSI_IsROMPresent(void);
+// 1 when an all-zero (unformatted) image is mounted as SCSI ID 0
+int SCSI_IsBlankImageMounted(void);
 void SCSI_Init(void);
 void SCSI_Cleanup(void);
 void SCSI_InvalidateTransferCache(void);

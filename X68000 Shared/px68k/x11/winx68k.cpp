@@ -532,7 +532,8 @@ WinX68k_Reset(void)
         FrameSkipQueue = 0;
         g_scsi_link_scan_slice_count = 0;
     }
-    
+
+    SysPort_ResetPowerOff();
     OPM_Reset();
 
 #if defined (HAVE_CYCLONE)
@@ -658,8 +659,18 @@ WinX68k_Reset(void)
 		// the intercept fires.
 		Memory_ClearSCSIMode();
 		Memory_SetSASIBootMode();
-		SRAM[0x18 ^ 1] = 0x80;
-		X68000_AppendSCSILog("IPL-ROM-FIRST: SCSI boot, SRAM=$80");
+		// Human68k tools (FORMAT.X etc.) need the SRAM SCSI settings for the
+		// external board; SCSI_Init() cleared the overlay for the IPL ROM.
+		SRAM_SetSCSIBoardOverlay(1);
+		if (SCSI_IsBlankImageMounted()) {
+			// Unformatted image: standard boot order so the IPL ROM boots a
+			// Human68k floppy, from which FORMAT.X can initialise the disk.
+			SRAM[0x18 ^ 1] = 0x00;
+			X68000_AppendSCSILog("IPL-ROM-FIRST: blank SCSI image, standard boot (SRAM=$00)");
+		} else {
+			SRAM[0x18 ^ 1] = 0x80;
+			X68000_AppendSCSILog("IPL-ROM-FIRST: SCSI boot, SRAM=$80");
+		}
 	} else {
 		g_scsi_boot_pending = 0;
 		SASI_ArmSCSIBootIntercept(0);
@@ -792,7 +803,24 @@ WinX68k_Cleanup(void)
     }
 }
 
-#define CLOCK_SLICE 1500
+// Largest CPU slice between timer/DMA/interrupt checks. c68k only samples
+// IRQs at C68k_Exec boundaries, so this bounds interrupt latency. px68k's
+// value; 1500 only worked while the CPU ran 5x over its nominal clock.
+#define CLOCK_SLICE 200
+
+// CPU clock as a ratio num/den MHz. The stock XVI "16 MHz" runs at
+// 50/3 MHz; every other setting is taken as an integer MHz.
+static void WinX68k_ClockRatio(long clockMHz, int *num, int *den)
+{
+    if (clockMHz < 1) clockMHz = 1;
+    if (clockMHz == 16) {
+        *num = 50;
+        *den = 3;
+    } else {
+        *num = (int)clockMHz;
+        *den = 1;
+    }
+}
 
 // Per-field CPU cycle budget at the legacy 10MHz base (the caller rescales
 // by the configured clock), derived from the CRTC registers. Invalid raw
@@ -818,7 +846,7 @@ static int WinX68k_FieldCycles10M(int *active_vline_total)
 void WinX68k_Exec(const long clockMHz, const long vsync)
 {
     //char *test = NULL;
-    int clk_total, clkdiv, usedclk, hsync, clk_next, clk_count;
+    int clk_total, clk_num, clk_den, usedclk, hsync, clk_next, clk_count;
     int active_vline_total;
     // Vertical scan parameters, latched once per raster (see the hsync
     // block). Same types as the registers they mirror so the comparisons
@@ -829,8 +857,7 @@ void WinX68k_Exec(const long clockMHz, const long vsync)
     int KeyIntCnt = 0, MouseIntCnt = 0;
     DWORD t_start = timeGetTime(), t_end;
 
-    // Minimal debug for now
-    (void)clockMHz; // suppress unused warning
+    SysPort_SetClockMHz(clockMHz);
 
     if ( Config.FrameRate != 7 ) {
         DispFrame = (DispFrame+1)%Config.FrameRate;
@@ -864,30 +891,20 @@ void WinX68k_Exec(const long clockMHz, const long vsync)
     vline = 0;
     clk_count = -ICount;
     clk_total = WinX68k_FieldCycles10M(&active_vline_total);
-#if 0 // GOROman
-    if (Config.XVIMode == 1) {
-        clk_total = (clk_total*16)/10;
-        clkdiv = 16;
-        } else if (Config.XVIMode == 2) {
-            clk_total = (clk_total*24)/10;
-            clkdiv = 24;
-        } else if (Config.XVIMode == 3) {
-            clkdiv = 250;
-            clk_total = (clk_total*clkdiv)/10;
-    } else {
-        clkdiv = 10;
-    }
-#else
-    // The C68K core measures cycles in 1/5 MHz units, so scale
-    // the requested clock to match actual X68000 MHz settings.
-    clkdiv = (DWORD)(clockMHz * 5);
-    clk_total = (clk_total * clkdiv) / 10;
-#endif
+    // c68k counts real 68000 cycles, so the field budget is the 10 MHz
+    // base scaled by clock/10. The timers (usedclk/hclk_line) keep running
+    // in 10 MHz base units: usedclk = executed * 10 / clock.
+    WinX68k_ClockRatio(clockMHz, &clk_num, &clk_den);
+    clk_total = (int)(((long long)clk_total * clk_num) / (10LL * clk_den));
     ICount += clk_total;
     clk_next = (clk_total/active_vline_total);
     hsync = 1;
     do {
         int m, n = (ICount > CLOCK_SLICE) ? CLOCK_SLICE : ICount;
+        // Never run past the end of the current raster: hsync, raster
+        // interrupts and line drawing are only processed between slices.
+        if ( n > clk_next-clk_count ) n = clk_next-clk_count;
+        if ( n < 0 ) n = 0;
 //        C68K.ICount = m68000_ICountBk = 0;            // ������ȯ������Ϳ���Ƥ����ʤ��ȥ����CARAT��
 
         if ( hsync ) {
@@ -967,18 +984,29 @@ void WinX68k_Exec(const long clockMHz, const long vsync)
             //            C68k_Exec(&C68K, C68K.ICount);
             #if defined (HAVE_CYCLONE)
                         m68000_execute(n);
+                        m = n;
 #elif defined (HAVE_C68K)
-                        C68k_Exec(&C68K, n);
+                        {
+                            // c68k finishes the instruction that crosses the
+                            // budget, so it can run a few cycles past n. Count
+                            // what it actually ran; the overrun is taken out of
+                            // the rest of the raster (and the field) instead of
+                            // speeding the CPU up. A negative return is a
+                            // status code (core busy/faulted); count the full
+                            // slice then so the field still advances.
+                            s32 ran = C68k_Exec(&C68K, n);
+                            m = (ran < 0) ? n : (int)ran;
+                        }
                         if (SCSI_HasDeferredBoot()) {
                             SCSI_CommitDeferredBoot();
                         }
 #endif /* HAVE_C68K */
-                        m = (n-m68000_ICountBk);
+                        m -= m68000_ICountBk;
             //            m = (n-C68K.ICount-m68000_ICountBk);            // clockspeed progress
-                        ClkUsed += m*10;
-                        usedclk = ClkUsed/clkdiv;
+                        ClkUsed += m*10*clk_den;
+                        usedclk = ClkUsed/clk_num;
                         hclk_line += usedclk;
-                        ClkUsed -= usedclk*clkdiv;
+                        ClkUsed -= usedclk*clk_num;
                         ICount -= m;
                         clk_count += m;
 #if defined(HAVE_C68K)
@@ -1467,6 +1495,37 @@ const int X68000_IsFDDReady( const long drive )
 const int X68000_IsFDDMounted(const long drive)
 {
     return FDD_IsMounted((int)drive);
+}
+
+const int X68000_IsFDDWriteProtected(const long drive)
+{
+    return FDD_IsReadOnly((int)drive);
+}
+
+// 1 when the image itself can't be written (e.g. a read-only file), so the
+// protection can't be lifted from the UI.
+const int X68000_IsFDDImageReadOnly(const long drive)
+{
+    return FDD_IsImageReadOnly((int)drive);
+}
+
+void X68000_SetFDDWriteProtect(const long drive, const int protect)
+{
+    FDD_SetWriteProtect((int)drive, protect);
+}
+
+// 1 while guest software has the machine switched off; any reset clears it.
+const int X68000_IsGuestPoweredOff(void)
+{
+    return SysPort_IsPoweredOff();
+}
+
+// Emulated time per real time (1 = normal, N = turbo; no-wait passes the
+// measured ratio). Only sound production depends on it; the caller runs
+// the extra frames.
+void X68000_SetSpeed(const double ratio)
+{
+    DSound_SetSpeed(ratio);
 }
 
 const char* X68000_GetFDDFilename( const long drive )

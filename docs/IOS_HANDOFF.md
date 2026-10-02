@@ -1,6 +1,6 @@
 # MPX68K for iOS — 開発引き継ぎメモ
 
-最終更新: 2026-09-25（開発機を Mac mini に移行するため作成）
+最終更新: 2026-10-02（2026-09-25 に Mac mini への移行用に作成）
 
 詳細な経緯と設計は `docs/IOS_PORT_PLAN.md` を参照。このファイルは「新しい Mac で続きを始める」ための手順と現状のまとめ。
 
@@ -35,10 +35,9 @@ open "MPX68K iOS.xcodeproj"
 
 | ブランチ | 内容 | 状態 |
 |---|---|---|
-| `master` | upstream（MPX68K）の旧 master | iOS 未統合 |
-| `ios/phase2-boot` | iOS ターゲット一式（Phase 1〜3、iPhone Duo 対応、フルキーボード、CRT 演出） | **PR #1（→ master）オープン中**、upstream/master（#30 を含む）マージ済み |
-| `ios/disk-menu` | ↑ ＋ ディスクメニュー（挿入・入れ替え・取り出し・最近使ったディスク・HDD・リセット） | **動作未確認**。確認後 PR 化 |
-| `ios/bootstrap`, `ios/phase1-target` | 過去の段階（phase2-boot に含まれる） | 削除してよい |
+| `master` | iOS 版一式（iPhone Duo 対応、フルキーボード、CRT 演出、ディスクメニュー、内蔵 SC-55 / MT-32） | PR #1 と `ios/disk-menu`・`ios/mt32` を統合済み |
+| `ios/merge-upstream-4.5` | `master` ＋ upstream MPX68K 4.5（#31 コア修正、#32 CPU クロック / Turbo / サウンドスレッド整理） | iOS・macOS ビルド、`tests/core`、iPad 実機での FM / ADPCM / SC-55 再生を確認済み |
+| `ios/bootstrap`, `ios/phase1-target`, `ios/phase2-boot`, `ios/disk-menu`, `ios/mt32` | 過去の段階（すべて `master` に含まれる） | 削除してよい |
 
 - `origin` = YosAwed/MPX68K-iOS（private）、`upstream` = YosAwed/MPX68K（macOS 版、public）。
 - GitHub Actions はリポジトリ設定で無効化済み（private の macOS ランナー課金を避けるため。workflow ファイル自体は upstream と共通なので残す）。
@@ -46,16 +45,27 @@ open "MPX68K iOS.xcodeproj"
 
 ## 3. 次にやること
 
-1. **`ios/disk-menu` の動作確認**（Device Hub で）:
-   ディスクボタン → ドライブ0 →「ディスクを入れ替える…」で一覧 → 選択で入れ替わるか / 最近使ったディスク / 取り出す / リセット / HDD 接続。
-   OK なら PR 化（`ios/phase2-boot` か `master` へ）。
-2. PR #1 のマージ。
+1. `ios/merge-upstream-4.5` を `master` へマージ。
+2. iOS で CPU クロック / Turbo / No-Wait を選べるようにするか検討（upstream 4.5 では macOS のメニューのみ。iOS は 24MHz・等速固定）。
 3. TestFlight 準備: バンドル ID が仮の `NANKIN.MPX68K-iOS`（`tools/generate_ios_project.py` の `PRODUCT_BUNDLE_IDENTIFIER`）。Team は `DQR9HH7KUY`。
 4. 実機（iPhone Duo）でのみ確認できる項目:
    - ヒンジ連動の CRT 電源演出（閉じ 50° / 開き 70° のしきい値、速さ）
    - タッチマウスの感度
    - 画面サイズ変更時の重さ（Debug ビルドは c68k 以外が最適化なしで重い。Release での体感も要確認。エミュレーションはメインスレッド）
 5. 任意: キー配列・F キー等の macOS 側残課題（`IOS_PORT_PLAN.md` 参照。F キーは macOS 側で意図的に別処理なので対応不要）。
+
+### iPad 実機でのテスト
+
+iPhone Duo が手元にない間は iPad で代用できる（`TARGETED_DEVICE_FAMILY` = iPhone / iPad）。折りたたみ・ヒンジ関係以外は確認できる。
+
+```bash
+xcrun devicectl list devices
+xcodebuild -project "MPX68K iOS.xcodeproj" -scheme "MPX68K iOS" -configuration Release -destination 'id=<iPad の UDID>' -allowProvisioningUpdates build
+xcrun devicectl device install app --device <UDID> <DerivedData>/Build/Products/Release-iphoneos/MPX68K.app
+```
+
+ROM・ディスク・内蔵音源 ROM は「ファイル」アプリの「このiPad内」→「MPX68K for iOS」→「MPX68K」に置く（Finder のデバイス画面の「ファイル」タブからも可）。
+SC-55 は `sc55_rom1.bin` `sc55_rom2.bin` `sc55_waverom1.bin` `sc55_waverom2.bin` `sc55_waverom3.bin` の 5 つ、MT-32 / CM-32L は内容で判別。起動時に読むので置いたらアプリを再起動。MIDI の切り替えはディスクボタンのメニュー。
 
 ## 4. 開発上の注意（旧 Mac で分かったこと）
 
