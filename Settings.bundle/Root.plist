@@ -62,18 +62,24 @@
 			<key>Key</key>
 			<string>clock</string>
 			<key>DefaultValue</key>
-			<string>10</string>
+			<string>24</string>
 			<key>Titles</key>
 			<array>
+				<string>1MHz</string>
 				<string>10MHz</string>
 				<string>16MHz</string>
 				<string>24MHz</string>
+				<string>40MHz</string>
+				<string>50MHz</string>
 			</array>
 			<key>Values</key>
 			<array>
+				<string>1</string>
 				<string>10</string>
 				<string>16</string>
 				<string>24</string>
+				<string>40</string>
+				<string>50</string>
 			</array>
 		</dict>
 		<dict>
