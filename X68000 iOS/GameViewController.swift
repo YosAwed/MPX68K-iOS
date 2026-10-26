@@ -301,6 +301,30 @@ final class GameViewController: UIViewController {
             button.leadingAnchor.constraint(equalTo: screenView.safeAreaLayoutGuide.leadingAnchor, constant: 16),
             button.topAnchor.constraint(equalTo: screenView.safeAreaLayoutGuide.topAnchor, constant: 16),
         ])
+
+        // Device Hub only switches between fixed poses, so the hinge angle never takes the
+        // values in between. This slider stands in for the hinge (CRT effect and throttle).
+        let hingeSlider = UISlider()
+        hingeSlider.minimumValue = 0
+        hingeSlider.maximumValue = 180
+        hingeSlider.value = 180
+        hingeSlider.minimumTrackTintColor = UIColor.systemRed.withAlphaComponent(0.6)
+        hingeSlider.accessibilityLabel = "ヒンジの角度（デバッグ）"
+        hingeSlider.addTarget(self, action: #selector(debugHingeSliderChanged(_:)), for: .valueChanged)
+        debugHingeLabel.text = "HINGE"
+        debugHingeLabel.font = .monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
+        debugHingeLabel.textColor = UIColor.white.withAlphaComponent(0.8)
+        for subview in [hingeSlider, debugHingeLabel] {
+            subview.translatesAutoresizingMaskIntoConstraints = false
+            screenView.addSubview(subview)
+        }
+        NSLayoutConstraint.activate([
+            hingeSlider.leadingAnchor.constraint(equalTo: button.trailingAnchor, constant: 12),
+            hingeSlider.centerYAnchor.constraint(equalTo: button.centerYAnchor),
+            hingeSlider.widthAnchor.constraint(equalToConstant: 160),
+            debugHingeLabel.leadingAnchor.constraint(equalTo: hingeSlider.trailingAnchor, constant: 8),
+            debugHingeLabel.centerYAnchor.constraint(equalTo: button.centerYAnchor),
+        ])
         #endif
         #if canImport(UIKit.UIArrangementViewController)
         if #available(iOS 27.1, *) {
@@ -326,13 +350,32 @@ final class GameViewController: UIViewController {
             screenController.powerOn()
         }
     }
+
+    private let debugHingeLabel = UILabel()
+
+    @objc private func debugHingeSliderChanged(_ slider: UISlider) {
+        let degrees = CGFloat(slider.value.rounded())
+        debugHingeLabel.text = "\(Int(degrees))°"
+        applyHingeAngle(degrees)
+    }
     #endif
 
-    #if canImport(UIKit.UIArrangementViewController)
-    /// Angles (degrees) with some hysteresis so the effect doesn't flicker around one angle.
+    /// Angles (degrees) with some hysteresis so the CRT effect doesn't flicker around one angle.
     private static let crtOffAngle: CGFloat = 50
     private static let crtOnAngle: CGFloat = 70
 
+    /// What the hinge angle drives: the CYBER STICK throttle and the CRT power effect.
+    private func applyHingeAngle(_ degrees: CGFloat) {
+        hingeDegrees = degrees
+        updateThrottle()
+        if degrees < Self.crtOffAngle {
+            screenController.powerOff()
+        } else if degrees > Self.crtOnAngle {
+            screenController.powerOn()
+        }
+    }
+
+    #if canImport(UIKit.UIArrangementViewController)
     @available(iOS 27.1, *)
     private func hingeChanged(_ hinge: UIHinge?) {
         // Folding changes where the panes go; make sure the layout state follows.
@@ -344,16 +387,12 @@ final class GameViewController: UIViewController {
             updateThrottle(showsHUD: false)
             return
         }
+        #if DEBUG
+        NSLog("Hinge: %@, %.1f°", String(describing: hinge.status), Double(hinge.angle * 180 / .pi))
+        #endif
         switch hinge.status {
         case .partiallyOpen, .fullyOpen:
-            let degrees = hinge.angle * 180 / .pi
-            hingeDegrees = degrees
-            updateThrottle()
-            if degrees < Self.crtOffAngle {
-                screenController.powerOff()
-            } else if degrees > Self.crtOnAngle {
-                screenController.powerOn()
-            }
+            applyHingeAngle(hinge.angle * 180 / .pi)
         default:
             // Closed: the app is on the outer display, show the picture as usual.
             screenController.resetPower()
