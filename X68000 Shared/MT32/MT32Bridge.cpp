@@ -5,6 +5,7 @@
 
 #include <cstdarg>
 #include <cstring>
+#include <mutex>
 #include <vector>
 
 #include "mt32emu/File.h"
@@ -40,6 +41,27 @@ const ROMInfo *identify(const uint8_t *data, size_t size) {
     return ROMInfo::getROMInfo(&file, ROMInfo::getFullROMInfos());
 }
 
+// The emulated LCD and MIDI MESSAGE LED, published after each render for the UI thread.
+struct PublishedDisplay {
+    std::mutex mutex;
+    char text[21] = {};
+    bool midiMessageLED = false;
+    bool valid = false;
+
+    void publish(const Synth *synth) {
+        char current[21] = {};
+        bool led = false;
+        if (synth != nullptr) led = synth->getDisplayState(current);
+        std::lock_guard<std::mutex> lock(mutex);
+        std::memcpy(text, current, sizeof(text));
+        text[sizeof(text) - 1] = '\0';
+        midiMessageLED = led;
+        valid = synth != nullptr;
+    }
+};
+
+PublishedDisplay publishedDisplay;
+
 // Queue sized so that one render period can never overflow: the host enqueues at most
 // 64 KiB of MIDI per render and every queued (non-realtime) message is at least 2 bytes.
 const Bit32u kMIDIQueueSize = 65536;
@@ -57,6 +79,7 @@ struct Instance {
     std::vector<float> interleaved;
 
     void closeSynth() {
+        publishedDisplay.publish(nullptr);
         delete parser;
         parser = nullptr;
         if (synth != nullptr) {
@@ -81,6 +104,7 @@ struct Instance {
         synth->setMIDIDelayMode(MIDIDelayMode_IMMEDIATE);
         parser = new DefaultMidiStreamParser(*synth);
         report.overflowed = false;
+        publishedDisplay.publish(synth);
         return true;
     }
 
@@ -191,5 +215,14 @@ extern "C" bool X68MT32_Render(float *left, float *right, size_t frames) {
         left[i] = buffer[i * 2];
         right[i] = buffer[i * 2 + 1];
     }
+    publishedDisplay.publish(instance.synth);
+    return true;
+}
+
+extern "C" bool X68MT32_GetDisplay(char *text, bool *midiMessageLED) {
+    std::lock_guard<std::mutex> lock(publishedDisplay.mutex);
+    if (!publishedDisplay.valid) return false;
+    if (text != nullptr) std::memcpy(text, publishedDisplay.text, sizeof(publishedDisplay.text));
+    if (midiMessageLED != nullptr) *midiMessageLED = publishedDisplay.midiMessageLED;
     return true;
 }

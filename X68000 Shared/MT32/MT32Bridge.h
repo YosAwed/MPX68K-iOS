@@ -31,6 +31,10 @@ bool X68MT32_Reset(void);
 // Raw MIDI byte stream (running status and SysEx may span calls).
 bool X68MT32_Send(const uint8_t *bytes, size_t count);
 bool X68MT32_Render(float *left, float *right, size_t frames);
+
+// The emulated 20-character LCD (text gets 21 bytes, NUL-terminated) and the MIDI MESSAGE
+// LED as of the last render; may be called from any thread. False when no synth is loaded.
+bool X68MT32_GetDisplay(char *text, bool *midiMessageLED);
 #ifdef __cplusplus
 }
 #endif

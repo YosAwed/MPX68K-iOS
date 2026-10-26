@@ -12,6 +12,15 @@
 #include <vector>
 
 struct Metrics { double acRMS; double peak; };
+
+static std::string display(bool *led = nullptr)
+{
+    char text[21];
+    bool on = false;
+    if (!X68MT32_GetDisplay(text, &on)) throw std::runtime_error("no display state");
+    if (led) *led = on;
+    return text;
+}
 static std::vector<double> renderMilliseconds;
 
 static Metrics render(int blocks)
@@ -87,10 +96,12 @@ int main(int argc, char **argv)
             throw std::runtime_error("load failed");
         if (X68MT32_SampleRate() != 48000) throw std::runtime_error("unexpected sample rate");
 
+        std::printf("LCD after load:  [%s]\n", display().c_str());
         double firstNote = 0;
         for (int pass = 0; pass < 2; ++pass) {
             if (pass && !X68MT32_Reset()) throw std::runtime_error("reset failed");
             render(47); // ~0.5 s
+            if (!pass) std::printf("LCD after 0.5 s: [%s]\n", display().c_str());
             const auto idle = render(10);
             // MT-32 default: parts 1-8 on MIDI channels 2-9 (channel 1 is unassigned).
             const uint8_t on[] = {0x91, 60, 100}, off[] = {0x81, 60, 0};
@@ -109,12 +120,18 @@ int main(int argc, char **argv)
         }
         // Running status and a SysEx split across Send calls (MT-32 display message).
         const uint8_t sysex1[] = {0xF0, 0x41, 0x10, 0x16, 0x12, 0x20, 0x00, 0x00};
-        const uint8_t sysex2[] = {'M', 'P', 'X', '6', '8', 'K', 0x00, 0xF7};
+        const uint8_t sysex2[] = {'M', 'P', 'X', '6', '8', 'K', 0x32, 0xF7}; // + Roland checksum
         const uint8_t chord[] = {0x92, 48, 100, 55, 100, 64, 100};
-        if (!X68MT32_Send(sysex1, sizeof sysex1) || !X68MT32_Send(sysex2, sizeof sysex2)
-            || !X68MT32_Send(chord, sizeof chord)) throw std::runtime_error("stream input rejected");
+        if (!X68MT32_Send(sysex1, sizeof sysex1) || !X68MT32_Send(sysex2, sizeof sysex2))
+            throw std::runtime_error("stream input rejected");
+        render(1);
+        const std::string message = display();
+        std::printf("LCD after SysEx: [%s]\n", message.c_str());
+        if (message.compare(0, 6, "MPX68K") != 0) throw std::runtime_error("display SysEx not shown on the LCD");
+        if (!X68MT32_Send(chord, sizeof chord)) throw std::runtime_error("stream input rejected");
         const auto chordMetrics = render(47);
         std::printf("running-status chord AC RMS %.7f\n", chordMetrics.acRMS);
+        std::printf("LCD after chord: [%s]\n", display().c_str());
         if (chordMetrics.acRMS < 0.001) throw std::runtime_error("running-status chord silent");
         std::puts("MT-32 real-ROM note-on/off, reset and stream checks passed");
 
@@ -134,6 +151,9 @@ int main(int argc, char **argv)
                 if (std::abs(left[i]) > 1e-4f || std::abs(right[i]) > 1e-4f) { onset = i; break; }
             std::printf("note sent at frame %zu, first output at frame %zu (%.2f ms later)\n",
                         at, onset, (double(onset) - at) / 48.0);
+            bool led = false;
+            display(&led);
+            if (!led) throw std::runtime_error("MIDI MESSAGE LED not lit by a note-on");
             if (onset < at || onset > at + 96) throw std::runtime_error("note not placed at its frame");
             const uint8_t off[] = {0x81, 72, 0};
             X68MT32_Send(off, sizeof off);
@@ -153,6 +173,8 @@ int main(int argc, char **argv)
                     renderMilliseconds[renderMilliseconds.size() / 2],
                     renderMilliseconds[renderMilliseconds.size() * 99 / 100], renderMilliseconds.back());
         X68MT32_Unload();
+        char text[21];
+        if (X68MT32_GetDisplay(text, nullptr)) throw std::runtime_error("display state left after unload");
     } catch (const std::exception &error) {
         std::fprintf(stderr, "%s\n", error.what());
         return 1;

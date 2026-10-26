@@ -5,7 +5,7 @@ Pinned commit: 9c98ab97b8d7b1af841845bbd65c4d2371f33ad0
 License: GPL-2.0-or-later; see LICENSE. Copyright headers are retained.
 
 Only source/header files needed by the emulation core are vendored. No ROMs,
-SDL/RtMidi, LCD artwork, or upstream executable are included.
+SDL/RtMidi, LCD background artwork, or upstream executable are included.
 
 Local changes dated 2026-09-07:
 
@@ -14,6 +14,11 @@ Local changes dated 2026-09-07:
   behavior; stub write-only LCD display functions; reset RAM, UART, analog and
   timer state; bound UART writes and render work; silence repeated error traps;
   provide an explicit analog-pin fallback required by the host compiler.
+- `core/mcu.cpp` (2026-10-26): the LCD controller state and `LCD_Write` /
+  `LCD_Enable` from upstream `src/lcd.cpp` replace the former stubs (the SDL window
+  and rendering are not included). Each render and reset publishes a copy under a
+  mutex for `X68SC55_GetLCD`; `X68SC55_LCDGlyph` returns character dot rows.
+- `core/lcd_font.h`: upstream `src/lcd_font.h`, unchanged (character dot table).
 - `core/mcu.h`: replace SDL atomic button type with a worker-owned integer.
 - `core/submcu.cpp`: remove an unused SDL audio include.
 - `core/mcu_timer.h`: expose the existing timer reset function.

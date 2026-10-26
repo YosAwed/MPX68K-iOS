@@ -418,6 +418,12 @@ final class GameViewController: UIViewController {
             case .hardDisk: self?.gameScene?.ejectHDD()
             }
         }
+        driveBay.activeModuleProvider = { [weak self] in
+            self?.gameScene?.midiOutputController.activeInternalSynth
+        }
+        driveBay.moduleMenuProvider = { [weak self] in
+            self?.midiMenu()?.children ?? []
+        }
         panel.addSubview(driveBay)
 
         panel.addLayoutGuide(controlArea)
@@ -465,7 +471,6 @@ final class GameViewController: UIViewController {
             driveBay.leadingAnchor.constraint(equalTo: guide.leadingAnchor, constant: 12),
             driveBay.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -12),
             driveBay.topAnchor.constraint(equalTo: topButtonRow.bottomAnchor, constant: 8),
-            driveBay.heightAnchor.constraint(equalToConstant: DriveBayView.preferredHeight),
 
             innerPanelPicker.widthAnchor.constraint(equalToConstant: 132),
             innerPanelPicker.heightAnchor.constraint(equalToConstant: 32),
