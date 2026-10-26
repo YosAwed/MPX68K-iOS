@@ -32,6 +32,19 @@ Metrics render(int blocks)
     return {std::sqrt(std::max(0.0, squares / count - mean * mean)), peak};
 }
 
+// Both LCD lines (40 character codes each); user glyphs (bar graph) as '#'.
+static std::string lcdText()
+{
+    uint8_t dd[80], cg[64];
+    if (!X68SC55_GetLCD(dd, cg, nullptr)) throw std::runtime_error("no LCD state");
+    std::string text;
+    for (int i = 0; i < 80; ++i) {
+        if (i == 40) text += " / ";
+        text += dd[i] >= 0x20 && dd[i] < 0x7f ? char(dd[i]) : '#';
+    }
+    return text;
+}
+
 int main(int argc, char **argv)
 {
     try {
@@ -53,6 +66,9 @@ int main(int argc, char **argv)
         for (int pass = 0; pass < 2; ++pass) {
             if (pass) X68SC55_Reset();
             render(250); // Four seconds: matches the host firmware warmup.
+            const std::string lcd = lcdText();
+            if (!pass) std::printf("LCD after warmup: [%s]\n", lcd.c_str());
+            if (lcd.find("Piano 1") == std::string::npos) throw std::runtime_error("LCD does not show the first part's instrument");
             const auto idle = render(8);
             const uint8_t on[] = {0x90, 60, 100}, off[] = {0x80, 60, 0};
             if (!X68SC55_Send(on, sizeof(on))) throw std::runtime_error("note-on rejected");

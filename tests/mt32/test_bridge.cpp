@@ -33,10 +33,15 @@ int main()
     CHECK(!X68MT32_Send(note, sizeof note));
     CHECK(!X68MT32_Reset());
     CHECK(X68MT32_SampleRate() == 0);
+    char display[21];
+    bool led = true;
+    CHECK(!X68MT32_GetDisplay(display, &led));
     CHECK(!X68MT32_Load(junk.data(), junk.size(), pcm.data(), pcm.size()));
     CHECK(!X68MT32_Render(left, right, 512));
+    CHECK(!X68MT32_GetDisplay(display, &led));
     X68MT32_Unload();
     X68MT32_Unload();
+    CHECK(!X68MT32_GetDisplay(nullptr, nullptr));
     std::puts("MT-32 bridge checks passed (no ROMs)");
     return 0;
 }

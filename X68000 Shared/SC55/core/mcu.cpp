@@ -1,4 +1,5 @@
 // Modified for MPX68K, 2026-09-07: headless, serialized host API; no SDL or ROM file I/O.
+// 2026-10-26: LCD controller state from upstream lcd.cpp, published for the host UI.
 /*
  * Copyright (C) 2021, 2024 nukeykt
  *
@@ -18,6 +19,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <algorithm>
+#include <mutex>
 #include "../SC55Bridge.h"
 #include "mcu.h"
 #include "mcu_opcodes.h"
@@ -1068,8 +1070,166 @@ static bool hostLoaded = false;
 static int16_t hostSamples[8][2];
 static unsigned hostRead = 0, hostWrite = 0;
 
-void LCD_Write(uint32_t, uint8_t) {}
-void LCD_Enable(uint32_t) {}
+// LCD controller (HD44780 type) from upstream lcd.cpp, without the SDL window. The
+// firmware's writes update it on the worker; X68SC55_Render publishes a copy for the UI.
+static uint32_t LCD_DL, LCD_N, LCD_F, LCD_D, LCD_C, LCD_B, LCD_ID, LCD_S;
+static uint32_t LCD_DD_RAM, LCD_AC, LCD_CG_RAM;
+static uint32_t LCD_RAM_MODE = 0;
+static uint8_t LCD_Data[80];
+static uint8_t LCD_CG[64];
+static uint8_t lcd_enable = 1;
+// Set when the panel was enabled at any point since the last publish: the mk1 firmware
+// reports the enable bit together with its button scan.
+static bool lcd_enable_seen = false;
+
+void LCD_Enable(uint32_t enable)
+{
+    lcd_enable = enable;
+    if (enable) lcd_enable_seen = true;
+}
+
+void LCD_Write(uint32_t address, uint8_t data)
+{
+    if (address == 0)
+    {
+        if ((data & 0xe0) == 0x20)
+        {
+            LCD_DL = (data & 0x10) != 0;
+            LCD_N = (data & 0x8) != 0;
+            LCD_F = (data & 0x4) != 0;
+        }
+        else if ((data & 0xf8) == 0x8)
+        {
+            LCD_D = (data & 0x4) != 0;
+            LCD_C = (data & 0x2) != 0;
+            LCD_B = (data & 0x1) != 0;
+        }
+        else if ((data & 0xff) == 0x01)
+        {
+            LCD_DD_RAM = 0;
+            LCD_ID = 1;
+            memset(LCD_Data, 0x20, sizeof(LCD_Data));
+        }
+        else if ((data & 0xff) == 0x02)
+        {
+            LCD_DD_RAM = 0;
+        }
+        else if ((data & 0xfc) == 0x04)
+        {
+            LCD_ID = (data & 0x2) != 0;
+            LCD_S = (data & 0x1) != 0;
+        }
+        else if ((data & 0xc0) == 0x40)
+        {
+            LCD_CG_RAM = (data & 0x3f);
+            LCD_RAM_MODE = 0;
+        }
+        else if ((data & 0x80) == 0x80)
+        {
+            LCD_DD_RAM = (data & 0x7f);
+            LCD_RAM_MODE = 1;
+        }
+        else
+        {
+            address += 0;
+        }
+    }
+    else
+    {
+        if (!LCD_RAM_MODE)
+        {
+            LCD_CG[LCD_CG_RAM] = data & 0x1f;
+            if (LCD_ID)
+            {
+                LCD_CG_RAM++;
+            }
+            else
+            {
+                LCD_CG_RAM--;
+            }
+            LCD_CG_RAM &= 0x3f;
+        }
+        else
+        {
+            if (LCD_N)
+            {
+                if (LCD_DD_RAM & 0x40)
+                {
+                    if ((LCD_DD_RAM & 0x3f) < 40)
+                        LCD_Data[(LCD_DD_RAM & 0x3f) + 40] = data;
+                }
+                else
+                {
+                    if ((LCD_DD_RAM & 0x3f) < 40)
+                        LCD_Data[LCD_DD_RAM & 0x3f] = data;
+                }
+            }
+            else
+            {
+                if (LCD_DD_RAM < 80)
+                    LCD_Data[LCD_DD_RAM] = data;
+            }
+            if (LCD_ID)
+            {
+                LCD_DD_RAM++;
+            }
+            else
+            {
+                LCD_DD_RAM--;
+            }
+            LCD_DD_RAM &= 0x7f;
+        }
+    }
+}
+
+static void LCD_ResetState(void)
+{
+    LCD_DL = LCD_N = LCD_F = LCD_D = LCD_C = LCD_B = LCD_ID = LCD_S = 0;
+    LCD_DD_RAM = LCD_AC = LCD_CG_RAM = LCD_RAM_MODE = 0;
+    memset(LCD_Data, 0x20, sizeof(LCD_Data));
+    memset(LCD_CG, 0, sizeof(LCD_CG));
+    lcd_enable = 1;
+    lcd_enable_seen = false;
+}
+
+static std::mutex lcdPublishedMutex;
+static uint8_t lcdPublishedData[sizeof(LCD_Data)];
+static uint8_t lcdPublishedCG[sizeof(LCD_CG)];
+static bool lcdPublishedEnabled = false;
+static bool lcdPublishedValid = false;
+
+static void LCD_Publish(void)
+{
+    std::lock_guard<std::mutex> lock(lcdPublishedMutex);
+    memcpy(lcdPublishedData, LCD_Data, sizeof(LCD_Data));
+    memcpy(lcdPublishedCG, LCD_CG, sizeof(LCD_CG));
+    lcdPublishedEnabled = lcd_enable || lcd_enable_seen;
+    lcdPublishedValid = true;
+    lcd_enable_seen = false;
+}
+
+#include "lcd_font.h"
+
+extern "C" bool X68SC55_GetLCD(uint8_t *ddram, uint8_t *cgram, bool *enabled)
+{
+    std::lock_guard<std::mutex> lock(lcdPublishedMutex);
+    if (!lcdPublishedValid) return false;
+    if (ddram) memcpy(ddram, lcdPublishedData, sizeof(lcdPublishedData));
+    if (cgram) memcpy(cgram, lcdPublishedCG, sizeof(lcdPublishedCG));
+    if (enabled) *enabled = lcdPublishedEnabled;
+    return true;
+}
+
+extern "C" void X68SC55_LCDGlyph(uint8_t code, const uint8_t *cgram, uint8_t *rows)
+{
+    if (!rows) return;
+    if (code >= 16)
+        memcpy(rows, lcd_font[code - 16], 8);
+    else if (cgram)
+        memcpy(rows, cgram + (code & 7) * 8, 8);
+    else
+        memset(rows, 0, 8);
+}
 
 void MCU_PostSample(int *sample)
 {
@@ -1120,6 +1280,8 @@ extern "C" void X68SC55_Reset(void)
     MCU_Reset();
     TIMER_Reset();
     PCM_Reset();
+    LCD_ResetState();
+    LCD_Publish();
 }
 
 extern "C" bool X68SC55_Send(const uint8_t *bytes, size_t count)
@@ -1160,5 +1322,6 @@ extern "C" bool X68SC55_Render(float *left, float *right, size_t frames)
         right[i] = hostSamples[hostRead % 8][1] / 32768.0f;
         ++hostRead;
     }
+    LCD_Publish();
     return true;
 }
