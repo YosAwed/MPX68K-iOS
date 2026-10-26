@@ -242,7 +242,6 @@ void DSound_SetSpeed(double ratio)
 void FASTCALL DSound_Send0(long clock)
 {
     int length = 0;
-    int rate;
     const long threshold = s_dsound_threshold;
 
 #if 1
@@ -330,7 +329,7 @@ void X68000_AudioCallBack(void* buffer, const unsigned int sample)
 
 void audio_callback(void *buffer, int len)
 {
-   int lena, lenb, datalen, rate;
+   int lena, lenb, datalen;
    BYTE *buf;
    s_dsound_last_callback_bytes = (unsigned int)len;
 

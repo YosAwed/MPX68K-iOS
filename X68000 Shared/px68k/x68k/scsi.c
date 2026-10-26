@@ -4697,7 +4697,6 @@ static void SCSI_HandleDeviceCommandImpl(void)
 				// and also find the last DPB to link ours
 				{
 					DWORD dpb = dpbHead;
-					DWORD lastDpb = 0;
 					int dpbCount = 0;
 					int ourDpbFound = 0;
 					while (dpb != 0 && dpb != 0xFFFFFFFF && dpbCount < 26) {
@@ -4719,7 +4718,6 @@ static void SCSI_HandleDeviceCommandImpl(void)
 						if ((devPtr & 0x00FFFFFF) == (SCSI_SYNTH_DEVHDR_ADDR & 0x00FFFFFF)) {
 							ourDpbFound = 1;
 						}
-						lastDpb = dpb;
 						dpb = ((DWORD)Memory_ReadB(dpb + 6) << 24) |
 						      ((DWORD)Memory_ReadB(dpb + 7) << 16) |
 						      ((DWORD)Memory_ReadB(dpb + 8) << 8) |
