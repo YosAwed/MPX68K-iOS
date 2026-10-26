@@ -8,7 +8,8 @@
 //  - StatusLampStripView is the row of lamps above the on-screen keyboard
 //    (portrait inner display: L-shaped / laptop posture, or fully open).
 //  - DriveBayView is the "front panel" with both floppy drives and the hard disk,
-//    shown on its own side of the fold in the book posture.
+//    shown on its own side of the fold in the book posture. Below the drives it shows
+//    the LCD of the internal sound module (SC-55 or MT-32) that MIDI goes to.
 //  - InnerPanelPicker chooses what the lower half shows: keyboard, pad or trackpad.
 //
 
@@ -233,6 +234,7 @@ enum LampColor {
     static let fdd = UIColor(red: 0.35, green: 1.0, blue: 0.45, alpha: 1)
     static let hdd = UIColor(red: 1.0, green: 0.25, blue: 0.2, alpha: 1)
     static let keyboard = UIColor(red: 1.0, green: 0.35, blue: 0.25, alpha: 1)
+    static let midiMessage = UIColor(red: 1.0, green: 0.3, blue: 0.2, alpha: 1)
 }
 
 /// FDD 0 / FDD 1 / HD BUSY and the keyboard's LEDs in one row, like the top edge
@@ -306,23 +308,43 @@ final class DriveBayView: UIView {
     /// Menu for a slot, rebuilt every time it opens.
     var menuProvider: ((Drive) -> [UIMenuElement])?
     var onEject: ((Drive) -> Void)?
+    /// The internal sound module MIDI goes to (nil: external MIDI). Polled while the bay is shown.
+    var activeModuleProvider: (() -> MIDIController.InternalSynth?)?
+    /// Menu for the module panel (the MIDI menu), rebuilt every time it opens.
+    var moduleMenuProvider: (() -> [UIMenuElement])?
 
     private var slots: [DriveSlotView] = []
+    private let sc55Panel = ModulePanelView(kind: .sc55)
+    private let mt32Panel = ModulePanelView(kind: .mt32)
+    private var displayLink: CADisplayLink?
+
+    /// Height of the three drive slots; the module panel adds its own height below them.
+    private static let slotsHeight: CGFloat = 3 * 46 + 2 * 8
 
     override init(frame: CGRect) {
         super.init(frame: frame)
+        let bay = UIStackView()
+        bay.axis = .vertical
+        bay.spacing = 8
+        bay.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(bay)
+        NSLayoutConstraint.activate([
+            bay.leadingAnchor.constraint(equalTo: leadingAnchor),
+            bay.trailingAnchor.constraint(equalTo: trailingAnchor),
+            bay.topAnchor.constraint(equalTo: topAnchor),
+            bay.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
         let stack = UIStackView()
         stack.axis = .vertical
         stack.spacing = 8
         stack.distribution = .fillEqually
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(stack)
-        NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: trailingAnchor),
-            stack.topAnchor.constraint(equalTo: topAnchor),
-            stack.bottomAnchor.constraint(equalTo: bottomAnchor),
-        ])
+        stack.heightAnchor.constraint(equalToConstant: Self.slotsHeight).isActive = true
+        bay.addArrangedSubview(stack)
+        for panel in [sc55Panel, mt32Panel] {
+            panel.isHidden = true
+            panel.menuProvider = { [weak self] in self?.moduleMenuProvider?() ?? [] }
+            bay.addArrangedSubview(panel)
+        }
         for drive in [Drive.floppy(0), .floppy(1), .hardDisk] {
             let slot = DriveSlotView(drive: drive)
             slot.menuProvider = { [weak self] in self?.menuProvider?(drive) ?? [] }
@@ -342,8 +364,42 @@ final class DriveBayView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    /// Height for the three slots.
-    static let preferredHeight: CGFloat = 3 * 46 + 2 * 8
+    override var isHidden: Bool {
+        didSet { if !isHidden && oldValue { updateModulePanel() } }
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window != nil, displayLink == nil {
+            let link = CADisplayLink(target: self, selector: #selector(updateModulePanel))
+            link.preferredFrameRateRange = CAFrameRateRange(minimum: 15, maximum: 30, preferred: 30)
+            link.add(to: .main, forMode: .common)
+            displayLink = link
+            updateModulePanel()
+        } else if window == nil {
+            displayLink?.invalidate()
+            displayLink = nil
+        }
+    }
+
+    /// Shows the panel of the active module and copies its LCD from the core.
+    @objc private func updateModulePanel() {
+        // Nothing to do while the bay is not on screen (any posture but the book).
+        var view: UIView? = self
+        while let current = view {
+            if current.isHidden { return }
+            view = current.superview
+        }
+        guard window != nil else { return }
+        let kind = activeModuleProvider?()
+        sc55Panel.setHiddenInStackView(kind != .sc55)
+        mt32Panel.setHiddenInStackView(kind != .mt32)
+        switch kind {
+        case .sc55: sc55Panel.updateFromCore()
+        case .mt32: mt32Panel.updateFromCore()
+        case nil: break
+        }
+    }
 }
 
 private final class DriveSlotView: UIView {
@@ -454,6 +510,340 @@ private final class DriveSlotView: UIView {
 
     @objc private func eject() {
         onEject?()
+    }
+}
+
+// MARK: - MIDI module LCDs
+
+/// 5x8 dot patterns of the modules' LCD characters, from the character ROM table in the
+/// SC-55 core (an HD44780-style font; the MT-32's LCD shows the same ASCII shapes).
+enum LCDCharacterROM {
+    private static let rom: [[UInt8]] = (0..<256).map { code -> [UInt8] in
+        var rows = [UInt8](repeating: 0, count: 8)
+        X68SC55_LCDGlyph(UInt8(code), nil, &rows)
+        return rows
+    }
+
+    /// Dot rows of `code` (bit 4 = leftmost dot). Codes below 16 are the 8 user glyphs in `cgram`.
+    static func rows(_ code: UInt8, cgram: [UInt8] = []) -> [UInt8] {
+        guard code < 16 else { return rom[Int(code)] }
+        let start = Int(code & 7) * 8
+        guard cgram.count >= start + 8 else { return rom[0] }
+        return Array(cgram[start..<start + 8])
+    }
+}
+
+/// A backlit dot-matrix LCD drawn in fixed design units (`canvas`), scaled to fit the view.
+class DotMatrixLCDView: UIView {
+    /// The design's coordinate space; subclasses draw inside it.
+    var canvas: CGRect { CGRect(x: 0, y: 0, width: 1, height: 1) }
+    var backlightColor = UIColor.orange
+    var litDotColor = UIColor.black
+    /// Unlit dots are faintly visible on a real LCD.
+    var unlitDotColor = UIColor.orange
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isOpaque = false
+        backgroundColor = .clear
+        contentMode = .redraw
+        isUserInteractionEnabled = false
+        isAccessibilityElement = true
+        accessibilityTraits = .updatesFrequently
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func draw(_ rect: CGRect) {
+        guard let context = UIGraphicsGetCurrentContext(), canvas.width > 0, canvas.height > 0 else { return }
+        let scale = min(bounds.width / canvas.width, bounds.height / canvas.height)
+        context.translateBy(x: (bounds.width - canvas.width * scale) / 2,
+                            y: (bounds.height - canvas.height * scale) / 2)
+        context.scaleBy(x: scale, y: scale)
+        context.translateBy(x: -canvas.minX, y: -canvas.minY)
+        backlightColor.setFill()
+        UIBezierPath(roundedRect: canvas, cornerRadius: canvas.height * 0.06 + 4).fill()
+        var lit: [CGRect] = []
+        var unlit: [CGRect] = []
+        drawDots(lit: &lit, unlit: &unlit)
+        context.setFillColor(unlitDotColor.cgColor)
+        context.fill(unlit)
+        context.setFillColor(litDotColor.cgColor)
+        context.fill(lit)
+        drawDecorations()
+    }
+
+    /// Adds the dots of every character, in design units.
+    func drawDots(lit: inout [CGRect], unlit: inout [CGRect]) {}
+
+    /// Draws what is printed around the dots (labels), in design units.
+    func drawDecorations() {}
+
+    /// Adds one character's dots: `rows` x `columns` dots of `glyph` from `origin`.
+    func addGlyph(_ glyph: [UInt8], at origin: CGPoint, rows: Int, columns: Int,
+                  dot: CGSize, pitch: CGSize, lit: inout [CGRect], unlit: inout [CGRect]) {
+        for row in 0..<min(rows, glyph.count) {
+            for column in 0..<columns {
+                let rect = CGRect(x: origin.x + CGFloat(column) * pitch.width,
+                                  y: origin.y + CGFloat(row) * pitch.height,
+                                  width: dot.width, height: dot.height)
+                if glyph[row] & (0x10 >> column) != 0 {
+                    lit.append(rect)
+                } else {
+                    unlit.append(rect)
+                }
+            }
+        }
+    }
+}
+
+/// The SC-55's LCD, laid out like the panel picture of Nuked SC-55 (lcd.cpp): the part's
+/// parameters on the left, the level bars of the 16 parts on the right. The bars are
+/// user glyphs that the firmware redraws.
+final class SC55LCDView: DotMatrixLCDView {
+    struct State: Equatable {
+        var ddram = [UInt8](repeating: 0x20, count: 80)
+        var cgram = [UInt8](repeating: 0, count: 64)
+        var enabled = false
+    }
+
+    var state = State() {
+        didSet {
+            guard state != oldValue else { return }
+            setNeedsDisplay()
+            accessibilityValue = fieldsDescription()
+        }
+    }
+
+    private static let canvasRect = CGRect(x: 20, y: 0, width: 701, height: 268)
+    static let aspectRatio = canvasRect.width / canvasRect.height
+    override var canvas: CGRect { Self.canvasRect }
+
+    /// A field of characters: its position in display RAM and on the panel.
+    private struct Field {
+        let label: String
+        let start: Int
+        let count: Int
+        let x: CGFloat
+        let y: CGFloat
+    }
+
+    private static let fields = [
+        Field(label: "PART", start: 0, count: 3, x: 34, y: 11),
+        Field(label: "INSTRUMENT", start: 3, count: 16, x: 153, y: 11),
+        Field(label: "LEVEL", start: 40, count: 3, x: 34, y: 75),
+        Field(label: "PAN", start: 43, count: 3, x: 153, y: 75),
+        Field(label: "REVERB", start: 49, count: 3, x: 34, y: 139),
+        Field(label: "CHORUS", start: 46, count: 3, x: 153, y: 139),
+        Field(label: "KEY SHIFT", start: 52, count: 3, x: 34, y: 203),
+        Field(label: "MIDI CH", start: 55, count: 3, x: 153, y: 203),
+    ]
+
+    private static let labelAttributes: [NSAttributedString.Key: Any] = [
+        .font: UIFont.systemFont(ofSize: 15, weight: .bold),
+        .foregroundColor: UIColor(red: 0.38, green: 0.15, blue: 0.02, alpha: 1),
+    ]
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backlightColor = UIColor(red: 0.91, green: 0.43, blue: 0.08, alpha: 1)
+        unlitDotColor = UIColor(red: 0.87, green: 0.40, blue: 0.06, alpha: 1)
+        litDotColor = UIColor(red: 0.16, green: 0.06, blue: 0.02, alpha: 1)
+        accessibilityLabel = "SC-55 の液晶"
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    private func code(at index: Int) -> UInt8 {
+        state.enabled && index < state.ddram.count ? state.ddram[index] : 0x20
+    }
+
+    override func drawDots(lit: inout [CGRect], unlit: inout [CGRect]) {
+        for field in Self.fields {
+            for i in 0..<field.count {
+                addGlyph(LCDCharacterROM.rows(code(at: field.start + i), cgram: state.cgram),
+                         at: CGPoint(x: field.x + CGFloat(i) * 35, y: field.y), rows: 7, columns: 5,
+                         dot: CGSize(width: 5, height: 5), pitch: CGSize(width: 6, height: 6),
+                         lit: &lit, unlit: &unlit)
+            }
+        }
+        // 16 parts x 16 steps: upper and lower halves of 3 full characters and one
+        // character's first column.
+        for half in 0..<2 {
+            for column in 0..<4 {
+                addGlyph(LCDCharacterROM.rows(code(at: 20 + column + half * 40), cgram: state.cgram),
+                         at: CGPoint(x: 293 + CGFloat(column) * 130, y: 71 + CGFloat(half) * 88),
+                         rows: 8, columns: column == 3 ? 1 : 5,
+                         dot: CGSize(width: 24, height: 9), pitch: CGSize(width: 26, height: 11),
+                         lit: &lit, unlit: &unlit)
+            }
+        }
+    }
+
+    override func drawDecorations() {
+        for field in Self.fields {
+            (field.label as NSString).draw(at: CGPoint(x: field.x, y: field.y + 44),
+                                           withAttributes: Self.labelAttributes)
+        }
+    }
+
+    private func fieldsDescription() -> String {
+        guard state.enabled else { return "" }
+        return Self.fields.map { field -> String in
+            let bytes = (0..<field.count).map { code(at: field.start + $0) }
+            let text = String(decoding: bytes.map { (0x20..<0x7f).contains($0) ? $0 : 0x20 }, as: UTF8.self)
+            return "\(field.label) \(text.trimmingCharacters(in: .whitespaces))"
+        }.joined(separator: "、")
+    }
+}
+
+/// The MT-32's 20-character LCD.
+final class MT32LCDView: DotMatrixLCDView {
+    /// Character codes, at most 20.
+    var text: [UInt8] = [] {
+        didSet {
+            guard text != oldValue else { return }
+            setNeedsDisplay()
+            accessibilityValue = String(decoding: text.map { (0x20..<0x7f).contains($0) ? $0 : 0x20 },
+                                        as: UTF8.self).trimmingCharacters(in: .whitespaces)
+        }
+    }
+
+    private static let canvasRect = CGRect(x: -16, y: -13, width: 726, height: 67)
+    static let aspectRatio = canvasRect.width / canvasRect.height
+    override var canvas: CGRect { Self.canvasRect }
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backlightColor = UIColor(red: 0.62, green: 0.76, blue: 0.20, alpha: 1)
+        unlitDotColor = UIColor(red: 0.58, green: 0.72, blue: 0.18, alpha: 1)
+        litDotColor = UIColor(red: 0.10, green: 0.16, blue: 0.03, alpha: 1)
+        accessibilityLabel = "MT-32 の液晶"
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func drawDots(lit: inout [CGRect], unlit: inout [CGRect]) {
+        for i in 0..<20 {
+            let code = i < text.count ? text[i] : 0x20
+            addGlyph(LCDCharacterROM.rows(code), at: CGPoint(x: CGFloat(i) * 35, y: 0), rows: 7, columns: 5,
+                     dot: CGSize(width: 5, height: 5), pitch: CGSize(width: 6, height: 6),
+                     lit: &lit, unlit: &unlit)
+        }
+    }
+}
+
+/// The internal sound module's front panel in the drive bay: its LCD and, on the MT-32,
+/// the MIDI MESSAGE lamp. Tapping it opens the MIDI menu.
+private final class ModulePanelView: UIView {
+    let kind: MIDIController.InternalSynth
+    var menuProvider: (() -> [UIMenuElement])?
+
+    private let lcd: DotMatrixLCDView
+    private let messageLamp = LampView()
+    private let menuButton = UIButton(type: .custom)
+
+    init(kind: MIDIController.InternalSynth) {
+        self.kind = kind
+        let aspectRatio: CGFloat
+        let maxLCDHeight: CGFloat
+        switch kind {
+        case .sc55:
+            lcd = SC55LCDView()
+            aspectRatio = SC55LCDView.aspectRatio
+            maxLCDHeight = 116
+        case .mt32:
+            lcd = MT32LCDView()
+            aspectRatio = MT32LCDView.aspectRatio
+            maxLCDHeight = 36
+        }
+        super.init(frame: .zero)
+        backgroundColor = UIColor(white: 0.10, alpha: 1)
+        layer.cornerRadius = 10
+        layer.borderWidth = 1
+        layer.borderColor = UIColor.white.withAlphaComponent(0.12).cgColor
+
+        let nameLabel = UILabel()
+        nameLabel.text = kind.displayName
+        nameLabel.font = .monospacedSystemFont(ofSize: 11, weight: .semibold)
+        nameLabel.textColor = UIColor.white.withAlphaComponent(0.6)
+        let caption = UIStackView(arrangedSubviews: [nameLabel])
+        caption.spacing = 12
+        caption.alignment = .center
+        if kind == .mt32 {
+            messageLamp.color = LampColor.midiMessage
+            let messageLabel = UILabel()
+            messageLabel.text = "MIDI MESSAGE"
+            messageLabel.font = .systemFont(ofSize: 8, weight: .medium)
+            messageLabel.textColor = UIColor.white.withAlphaComponent(0.55)
+            let message = UIStackView(arrangedSubviews: [messageLamp, messageLabel])
+            message.spacing = 4
+            message.alignment = .center
+            caption.addArrangedSubview(message)
+        }
+        caption.isUserInteractionEnabled = false
+
+        menuButton.showsMenuAsPrimaryAction = true
+        menuButton.menu = UIMenu(children: [
+            UIDeferredMenuElement.uncached { [weak self] completion in
+                completion(self?.menuProvider?() ?? [])
+            }
+        ])
+        menuButton.accessibilityLabel = "\(kind.displayName)：MIDI メニュー"
+
+        for subview in [menuButton, caption, lcd] {
+            subview.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(subview)
+        }
+        let fullWidth = lcd.widthAnchor.constraint(equalTo: widthAnchor, constant: -20)
+        fullWidth.priority = .defaultHigh
+        NSLayoutConstraint.activate([
+            menuButton.leadingAnchor.constraint(equalTo: leadingAnchor),
+            menuButton.trailingAnchor.constraint(equalTo: trailingAnchor),
+            menuButton.topAnchor.constraint(equalTo: topAnchor),
+            menuButton.bottomAnchor.constraint(equalTo: bottomAnchor),
+
+            caption.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            caption.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -12),
+            caption.topAnchor.constraint(equalTo: topAnchor, constant: 6),
+            caption.heightAnchor.constraint(equalToConstant: 14),
+
+            lcd.topAnchor.constraint(equalTo: caption.bottomAnchor, constant: 4),
+            lcd.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
+            lcd.centerXAnchor.constraint(equalTo: centerXAnchor),
+            lcd.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, constant: -20),
+            fullWidth,
+            lcd.heightAnchor.constraint(equalTo: lcd.widthAnchor, multiplier: 1 / aspectRatio),
+            lcd.heightAnchor.constraint(lessThanOrEqualToConstant: maxLCDHeight),
+        ])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    /// Copies the module's LCD (and MIDI MESSAGE lamp) as of its last rendered buffer.
+    func updateFromCore() {
+        switch kind {
+        case .sc55:
+            var ddram = [UInt8](repeating: 0x20, count: 80)
+            var cgram = [UInt8](repeating: 0, count: 64)
+            var enabled = false
+            guard X68SC55_GetLCD(&ddram, &cgram, &enabled) else { return }
+            (lcd as? SC55LCDView)?.state = SC55LCDView.State(ddram: ddram, cgram: cgram, enabled: enabled)
+        case .mt32:
+            var text = [CChar](repeating: 0, count: 21)
+            var led = false
+            guard X68MT32_GetDisplay(&text, &led) else { return }
+            (lcd as? MT32LCDView)?.text = text.prefix(while: { $0 != 0 }).map { UInt8(bitPattern: $0) }
+            messageLamp.isLit = led
+        }
     }
 }
 

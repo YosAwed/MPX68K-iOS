@@ -220,3 +220,29 @@ iPhoneOS 27.0 SDK（arm64, `-DHAVE_C68K -DTARGET_IOS`）で `clang -fsyntax-only
   （エミュレータの不具合ではない。詳細は `IOS_HANDOFF.md` の 4 章）。起動できる `900MHDD.HDS` なら iOS でもプロンプトまで起動する。
   フロッピーから起動した Human68k では SCSI ドライバが組み込まれず C: も見えない（想定どおり）。
 
+
+### ドライブベイの音源液晶（2026-10-26、ブランチ `ios/module-lcd`）
+
+- 本の持ち方のドライブベイで、3 つのスロットの下に、MIDI の出力先になっている内蔵音源の液晶を出す
+  （外部 MIDI のときは出さない）。パネルをタップすると MIDI メニュー（出力先・音量・テスト音）が開く。
+  - SC-55: Nuked SC-55 の `lcd.cpp` のパネル絵と同じ配置。左に PART・INSTRUMENT・LEVEL・PAN・REVERB・CHORUS・
+    KEY SHIFT・MIDI CH、右に 16 パートのレベルバー（16 段）。バーはファームウェアがユーザー定義文字（CGRAM）を
+    書き換えて描いているので、その文字をそのまま描く。液晶の高さは最大 116 pt。
+  - MT-32: 20 文字の液晶と MIDI MESSAGE ランプ。起動時の「** Roland MT-32 **」、パートの状態と音量、
+    ゲームが SysEx で送る表示メッセージ（アドレス 20 00 00）、チェックサムエラーなどが Munt の表示エミュレーション
+    （`Synth::getDisplayState`）のとおりに出る。
+  - 文字は 5×8 ドット。字形は Nuked SC-55 の `lcd_font.h`（HD44780 型の文字 ROM の表）を両方で使う。
+- コア（macOS の動作は変わらない）:
+  - `SC55/core/mcu.cpp`: これまでスタブだった `LCD_Write` / `LCD_Enable` を upstream の `lcd.cpp` の液晶コントローラ
+    （DDRAM 80 バイト・CGRAM 64 バイト）に置き換えた。SDL の描画部分は取り込んでいない。`X68SC55_Render` の終わりと
+    `X68SC55_Reset` で状態のコピーをミューテックス付きで公開し、`X68SC55_GetLCD` で読む（どのスレッドからでも可）。
+    字形は `X68SC55_LCDGlyph`。mk1 のファームウェアは液晶の有効ビットをボタンの走査と一緒に出すので、
+    公開の間に一度でも有効になっていれば点灯とみなす。
+  - `MT32/MT32Bridge.cpp`: `X68MT32_Render` の後に `getDisplayState` を取って公開し、`X68MT32_GetDisplay` で読む。
+- UI（`DuoPanels.swift`）: `DriveBayView` が表示中だけ 30 Hz の CADisplayLink で `activeInternalSynth` と液晶を読み、
+  変わったときだけ再描画する（`SC55LCDView` / `MT32LCDView`、共通部分は `DotMatrixLCDView`）。
+  ドライブベイの高さは中身で決まるようにした（`GameViewController` の固定の高さを外した）。
+- テスト: `make -C tests/sc55`（液晶コントローラの書き込み、公開のタイミング、リセット、字形）、`make -C tests/mt32`
+  （未ロード時）。実 ROM（`rom` ターゲット）では、SC-55 が起動 4 秒後に「001 Piano 1」を表示すること、MT-32 が
+  起動時のバナー、SysEx の表示メッセージ、ノートオンで MIDI MESSAGE が点くことを確かめる。
+  MT-32 の実 ROM テストの SysEx はチェックサムが 0 で、実機どおり「Exc. Checksum error」になっていたので、正しい値にした。
