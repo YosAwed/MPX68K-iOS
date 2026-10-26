@@ -94,8 +94,10 @@ SC-55 は `sc55_rom1.bin` `sc55_rom2.bin` `sc55_waverom1.bin` `sc55_waverom2.bin
 - **iPhone Duo シミュレータ（Xcode 27.1 の Device Hub）の癖**:
   - 半開きの姿勢では、どのアプリでも内側ディスプレイの上半分をシステムがぼかす（アプリの不具合ではない）。
   - 姿勢変更直後は数秒間ぼかした静止画が出る（アプリの再描画待ち）。
-  - 開閉は段階的でヒンジ角度が途中の値を取らないため、CRT 演出は Debug ビルドの画面左上「CRT」ボタンで確認する。
-    3 本指タップと ⌘ ショートカットは Device Hub から届かない。
+  - 開閉は段階的でヒンジ角度が途中の値を取らないため、CRT 演出は画面左上の「CRT」ボタン、ヒンジの角度
+    （CYBER STICK のスロットル）は「HINGE」スライダーで確かめる。どちらも Debug ビルドをシミュレータで動かしたときだけ出る
+    （`#if DEBUG && targetEnvironment(simulator)`。実機では Debug ビルドでも出ない）。
+    3 本指タップと ⌘ ショートカット（⌘⇧P）は Device Hub から届かない。
   - `simctl` からアプリを起動するとバックグラウンドのままのことがある（Device Hub でタップして前面へ）。
   - 画面の取得は `xcrun simctl io <UDID> screenshot --display=<UUID>`（`simctl io <UDID> enumerate` で 2007×2853=内側、1398×2034=外側）。
   - 姿勢（閉・L 字・本の持ち方・全開）は Device Hub の GUI でしか変えられない。`simctl` には開閉の操作がなく、

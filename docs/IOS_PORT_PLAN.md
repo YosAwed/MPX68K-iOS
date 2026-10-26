@@ -255,6 +255,9 @@ iPhoneOS 27.0 SDK（arm64, `-DHAVE_C68K -DTARGET_IOS`）で `clang -fsyntax-only
 - CYBER STICK のとき、スロットルは iPhone Duo のヒンジの角度で決まる: 80° 以下でいちばん手前（$FF）、
   170° 以上でいちばん前（$00）、その間は直線。50° を下回ると CRT の電源演出になるので、そこは使わない。
   ヒンジのない端末ではスロットルは中央（$80）。変えるとき画面の右上に THROTTLE の表示が 1.5 秒出る（`ThrottleHUDView`）。
+- シミュレータはヒンジの途中の角度を出さないので、Debug ビルドをシミュレータで動かすときだけ画面左上に
+  「HINGE」スライダー（0〜180°、本物のヒンジと同じ `applyHingeAngle` を通る）と「CRT」ボタンを出す。
+  実機では Debug ビルドでも出さない（`#if DEBUG && targetEnvironment(simulator)`）。
 - スティックとトリガー A / B は今までのジョイスティック入力（仮想パッド、ゲームコントローラ）から作る。
   十字は端まで倒した値（$00 / $80 / $FF）になる。
 - コア（`x11/joystick.c`、macOS の動作は変わらない。既定はオフ）:
@@ -267,4 +270,5 @@ iPhoneOS 27.0 SDK（arm64, `-DHAVE_C68K -DTARGET_IOS`）で `clang -fsyntax-only
 - テスト: `tests/core/test_cyberstick.c`（シャープのドライバの読み方で 10 / 24 MHz、遅いポーリング、途中での再要求、
   待機中の線の状態、オフに戻したときのふつうのジョイスティック）。実機相当の確認用に `tools/cyberstick-test`
   （セルフブート XDF）を追加した。
-- 未確認: Xcode でのビルド、シミュレータ・実機での動作、CYBER STICK 対応ゲームでの動作。
+- シミュレータで、スティックと HINGE スライダーでのスロットルが動くことを確認（ユーザー確認）。
+- 未確認: 実機（ヒンジ）での動作、CYBER STICK 対応ゲームでの動作。
