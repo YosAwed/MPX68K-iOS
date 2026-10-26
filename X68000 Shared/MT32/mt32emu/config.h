@@ -33,4 +33,9 @@
 #define MT32EMU_WITH_VERSION_TAGGING 0
 #undef MT32EMU_RUNTIME_VERSION_CHECK
 
+/* Format messages with snprintf (Part.cpp, MidiStreamParser.cpp). Upstream's CMake build
+   defines this when the C++ library provides std::snprintf; without it the sources fall
+   back to sprintf, which the Apple SDKs mark as deprecated. */
+#define MT32EMU_WITH_STD_SNPRINTF 1
+
 #endif /* #ifndef MT32EMU_CONFIG_H */
