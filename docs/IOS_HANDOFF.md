@@ -62,6 +62,14 @@ open "MPX68K iOS.xcodeproj"
      これを iOS シミュレータで HDD に接続すると、Human68k 3.02 が CONFIG.SYS のドライバを組み込んでプロンプトまで起動する。
    - iOS で使うときは `900MHDD.HDS` の方を `Documents/MPX68K` に置く。
      なお iOS のシミュレータでは、ログの出力先が macOS 用の分岐（`MPX68K_HAVE_IOKIT_USB`）の中にあるため `scsi.c` のログはそのままでは出ない（調べたときは一時的に分岐を外した）。
+7. 自宅の Mac mini で続けるとき（2026-10-26 時点）: ブランチはすべて origin に push 済み。作業中のブランチは `ios/duo-posture`（PR #5）。
+   git に入らない（入れてはいけない）ものは手で持っていく。いまの Mac での置き場所:
+   - ROM: `~/Documents/X68IPLCG/` の `IPLROM.DAT` `CGROM.DAT`（macOS 版の SCSI 用に `SCSIEXROM.DAT`、ほか `IPLROMCO.DAT` `SCSIINROM*.DAT`）。
+     `~/Documents/MPX68K/` にも `IPLROM.DAT` `CGROM.DAT` `SRAM.DAT`。
+   - ディスク: `~/Documents/X68IPLCG/900MHDD.HDS`（起動できる SCSI HDD、約 900 MB）、`Human302mod.XDF`、
+     `~/Downloads/HDD-MDX.HDF`（SASI）、`~/Documents/crtmodetest.xdf`（`tools/crt-mode-test/` からも作れる）。
+   - SC-55: `~/Downloads/Roland SC-55 v1.21/sc55_*.bin`（5 本）。
+   - 1 章で触れている `sim-media/install_to_simulator.sh` はこの Mac にもリポジトリにも無い。シミュレータへは 1 章の `simctl get_app_container` の手順でコピーする。
 
 ### iPad 実機でのテスト
 
