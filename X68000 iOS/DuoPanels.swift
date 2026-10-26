@@ -14,6 +14,15 @@
 
 import UIKit
 
+extension UIView {
+    /// Shows or hides an arranged subview of a UIStackView. A posture change runs inside
+    /// an animation, and there the stack view counts repeated `isHidden = true`, so one
+    /// `isHidden = false` would not bring the view back. Only set it when it changes.
+    func setHiddenInStackView(_ hidden: Bool) {
+        if isHidden != hidden { isHidden = hidden }
+    }
+}
+
 // MARK: - Lamp state
 
 /// Polls the emulator for lamp state (the emulation runs on the main thread, so
@@ -237,7 +246,7 @@ final class StatusLampStripView: UIStackView {
 
     /// The keyboard LEDs are only meaningful next to the on-screen keyboard.
     var showsKeyboardLEDs = true {
-        didSet { keyboardGroup.isHidden = !showsKeyboardLEDs }
+        didSet { keyboardGroup.setHiddenInStackView(!showsKeyboardLEDs) }
     }
 
     override init(frame: CGRect) {

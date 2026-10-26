@@ -809,9 +809,9 @@ final class GameViewController: UIViewController {
         } else {
             surface = inputMode == .pad ? .pad : .trackpad
         }
-        innerPanelPicker.isHidden = !isUprightInnerDisplay
+        innerPanelPicker.setHiddenInStackView(!isUprightInnerDisplay)
         innerPanelPicker.selection = innerPanel
-        inputModeButton.isHidden = isUprightInnerDisplay
+        inputModeButton.setHiddenInStackView(isUprightInnerDisplay)
 
         // The lamps sit at the top edge of the "keyboard"; the book posture has the drive bay instead.
         lampStrip.isHidden = !isUprightInnerDisplay
@@ -832,7 +832,7 @@ final class GameViewController: UIViewController {
         let isPad = surface == .pad
         touchMouse?.isEnabled = !isPad
         virtualPad.isHidden = !isPad
-        padOutputButton.isHidden = !isPad
+        padOutputButton.setHiddenInStackView(!isPad)
         updatePadOutputButton()
         if !isPad {
             virtualPad.releaseAll()
