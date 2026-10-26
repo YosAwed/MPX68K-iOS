@@ -177,3 +177,46 @@ iPhoneOS 27.0 SDK（arm64, `-DHAVE_C68K -DTARGET_IOS`）で `clang -fsyntax-only
 - SpriteKit のデバッグ表示（FPS・ノード数）を削除。
 - 残り候補: 余白のアートワーク（HIG）、`UIHingeInteraction` の演出、バンドル ID 確定と TestFlight 準備、
   `ios/phase2-boot` を `master` へ統合。
+
+### iPhone Duo の姿勢別レイアウト（2026-10-26、ブランチ `ios/duo-posture`）
+
+- 姿勢の判定は `GameViewController.updateLayoutState` で、arrangement が置いたペインの位置から行う。
+  - 上下に分かれた半開き（L 字・ノート PC 持ち）: 画面が上、操作パネルが下
+  - 左右に分かれた半開き（本の持ち方）: `isBookPosture`
+  - 内側ディスプレイの縦向き（L 字、または全開の縦）: `isUprightInnerDisplay`
+- 内側ディスプレイが縦のときは、下半分の中身を上段の切り替え（`InnerPanelPicker`）でキーボード／仮想パッド／トラックパッドから選べる。
+  選んだものは `ios_inner_panel` に保存する。以前はキーボード固定で、L 字ではパッドを使えなかった。
+- キーボードの上の端にランプ列（`StatusLampStripView`）を出す: FDD0・FDD1 のアクセス（ディスクが入っていると薄く点灯）、
+  HD BUSY、キーボード LED（かな・ローマ字・コード入力・CAPS・INS・ひらがな・全角）。
+- 本の持ち方では、操作パネル側の上にドライブベイ（`DriveBayView`）を出す。FDD0・FDD1・HDD の各スロットに、
+  アクセスランプ、ディスク名、取り出しボタンがあり、スロットをタップするとディスクメニューの該当部分が開く。
+- 姿勢が変わったときは、操作パネルをクロスフェードで切り替える。
+- コアに追加したもの（macOS の動作は変わらない）:
+  - `FDD_ActivityCount[]`（fdd.c、シーク・読み書きのたびに加算）
+  - `HDD_ActivityCount`（sasi.c で定義。SASI は実際のセクタ読み書きの `SASI_Seek` / `SASI_Flush`、
+    SCSI は `SCSI_HandleIOCS` / `SCSI_HandleDeviceCommandImpl` の 1 コマンドごとに加算。実機の HD BUSY も
+    バスのアクセスで点く。`Sasi_Read` / `Sasi_Write` / `SCSI_ImgBuf` を通らない経路が多いので、そこだけでは点かない）
+  - `MFP_KeyboardLEDs`（mfp.c、UDR へ書かれた $80〜$FF の LED コマンド。ビット 0 が点灯）
+  - 取得は `X68000_GetFDDActivity` / `X68000_GetHDDActivity` / `X68000_GetKeyboardLEDs`。
+    UI 側は `StatusLampMonitor` が 30 Hz で読み、アクセスの後 0.12 秒ランプを点ける。
+- UIStackView の並びに入っているビュー（ランプ列のキーボード LED、上段の切り替え・ボタン）は
+  `setHiddenInStackView` で表示を切り替える。姿勢変更はアニメーションの中で `applyInputMode()` が 2 回呼ばれ、
+  UIStackView はアニメーション中の `isHidden = true` の重ねがけを数えるので、値が変わるときだけ設定しないと
+  本の持ち方 → L 字でキーボード LED が消えたままになった。
+- 画面（`ScreenViewController`）は左右に常に枠の幅＋2 pt の余白を取る。本の持ち方の左ペインでは画面が幅いっぱいに
+  なり、safe area が表示の端まで届くため、枠の左端が切れていた（`master` でも同じだった）。
+
+#### 動作確認（2026-10-26, iPhone Duo シミュレータ / iOS 27.1, Human68k 3.02）
+
+- 閉: ディスクメニューから起動。
+- L 字: ランプ列は切り替えと 1 行に収まる。CAPS・かなで対応する LED が点く（ビットの向きは合っている）。
+  キーボード／パッド／トラックパッドの切り替え、本の持ち方 → L 字でも LED が残ることを確認。
+- アクセスランプ（`simctl io recordVideo` の録画で確認）: `DIR B:` で FDD1、`.HDF` 接続時の `DIR C:` で HD BUSY、
+  `.HDS` 接続時の起動で HD BUSY が点く。A: の `SYS` / `BIN` などは起動時に読まれてバッファに残っているので、
+  `DIR` してもディスクを読まずランプは点かない。
+- 本の持ち方: ドライブベイの 3 スロット、スロットのタップでメニュー、取り出し後のスロット表示の更新。
+- 未確認: 姿勢変更のクロスフェード（シミュレータは開閉が段階的で、直後はぼかした静止画になる）。
+- `900MSCSIHDD.HDS`（SCSI）から起動すると「Human.sys が壊れています」で止まるのは、イメージのデータ領域が空のため
+  （エミュレータの不具合ではない。詳細は `IOS_HANDOFF.md` の 4 章）。起動できる `900MHDD.HDS` なら iOS でもプロンプトまで起動する。
+  フロッピーから起動した Human68k では SCSI ドライバが組み込まれず C: も見えない（想定どおり）。
+

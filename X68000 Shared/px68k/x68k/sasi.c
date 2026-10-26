@@ -79,6 +79,9 @@ static int SASI_IsDriveReady(int index)
 	return (Config.HDImage[index][0] != '\0') ? 1 : 0;
 }
 
+// Bumped on every SASI/SCSI image transfer so the UI can flash the HDD lamp.
+volatile unsigned int HDD_ActivityCount = 0;
+
 FILEH Sasi_Open(const char* filename) {
 //	printf( "%s( \"%s\" )\n", __FUNCTION__, filename );
 	s_Sasi_pos = 0;
@@ -104,6 +107,7 @@ int Sasi_Read( HANDLE fp, void* buf, int size ) {
 	pos += s_Sasi_pos;
 	memcpy( buf, pos, size );
 	s_Sasi_pos += size;
+	HDD_ActivityCount++;
 
 	return size;
 }
@@ -123,6 +127,7 @@ int Sasi_Write( HANDLE fp, void* buf, int size ) {
 	pos += s_Sasi_pos;
 	memcpy( pos, buf, size );
 	s_Sasi_pos += size;
+	HDD_ActivityCount++;
 
 	return size;
 }
@@ -285,6 +290,7 @@ fclose(fp_trace);
 
 	// Read from memory buffer
 	memcpy(SASI_Buf, s_disk_image_buffer[4] + offset, 256);
+	HDD_ActivityCount++;
 	return 1;
 }
 
@@ -315,6 +321,7 @@ short SASI_Flush(void)
 
 	// Write to memory buffer
 	memcpy(s_disk_image_buffer[4] + offset, SASI_Buf, 256);
+	HDD_ActivityCount++;
 
 	// Mark as dirty for Swift-side saving
 	s_Sasi_dirty_flag[0] = 1;

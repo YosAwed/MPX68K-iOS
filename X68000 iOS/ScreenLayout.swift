@@ -22,6 +22,9 @@ final class ScreenViewController: UIViewController {
 
     /// Keeps the top corners of the screen clear of the display's rounded corners.
     private static let topAlignedInset: CGFloat = 12
+    /// Room on each side for the bezel (and its outline) when the screen fills the width,
+    /// e.g. the left pane of the book posture, where the safe area reaches the display edge.
+    private static let sideInset = MonitorBezelView.bezelWidth + 2
 
     /// Pin the screen to the top of the safe area (portrait, controls below) instead of centring it.
     var alignsToTop = false {
@@ -36,7 +39,8 @@ final class ScreenViewController: UIViewController {
         topConstraint?.isActive = alignsToTop
         let inset = alignsToTop ? Self.topAlignedInset : 0
         topConstraint?.constant = inset
-        widthConstraints.forEach { $0.constant = -2 * inset }
+        let sideInset = max(inset, Self.sideInset)
+        widthConstraints.forEach { $0.constant = -2 * sideInset }
     }
 
     private let bezel = MonitorBezelView()
@@ -189,6 +193,9 @@ final class ScreenViewController: UIViewController {
 /// Fills the space around the emulator screen with a dark monitor bezel
 /// (HIG: add artwork to letterbox/pillarbox areas instead of leaving them black).
 final class MonitorBezelView: UIView {
+    /// Width of the bezel drawn around the screen.
+    static let bezelWidth: CGFloat = 10
+
     /// The emulator screen's frame in this view's coordinates.
     var screenFrame: CGRect = .zero {
         didSet { if screenFrame != oldValue { setNeedsDisplay() } }
@@ -218,7 +225,7 @@ final class MonitorBezelView: UIView {
         guard !screenFrame.isEmpty else { return }
 
         // Bezel around the tube, with a highlight on the upper edge.
-        let bezelInset: CGFloat = -10
+        let bezelInset = -Self.bezelWidth
         let bezelRect = screenFrame.insetBy(dx: bezelInset, dy: bezelInset).intersection(bounds)
         let bezelPath = UIBezierPath(roundedRect: bezelRect, cornerRadius: 14)
         UIColor(white: 0.04, alpha: 1).setFill()

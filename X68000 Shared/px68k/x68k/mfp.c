@@ -130,9 +130,13 @@ void MFP_Int(int irq)		// 'irq' は 0が最優先（HSYNC/GPIP7）、15が最下
 // -----------------------------------------------------------------------
 //   初期化
 // -----------------------------------------------------------------------
+// Last LED command the X68000 sent to the keyboard (all off until one arrives).
+volatile BYTE MFP_KeyboardLEDs = 0xff;
+
 void MFP_Init(void)
 {
 	int i;
+	MFP_KeyboardLEDs = 0xff;
 	static const BYTE initregs[24] = {
 		0x7b, 0x06, 0x00, 0x18, 0x3e, 0x00, 0x00, 0x00,
 		0x00, 0x18, 0x3e, 0x40, 0x08, 0x01, 0x77, 0x01,
@@ -272,6 +276,10 @@ fclose(fp);
 			MFP[reg] = data;
 			break;
 		case MFP_UDR:
+			// Data for the keyboard. $80-$FF sets the LEDs (bit = 0 lights it):
+			// b0 かな b1 ローマ字 b2 コード入力 b3 CAPS b4 INS b5 ひらがな b6 全角
+			if (data & 0x80)
+				MFP_KeyboardLEDs = data;
 			break;
 		default:
 			MFP[reg] = data;

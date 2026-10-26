@@ -27,6 +27,9 @@ typedef struct {
 } FDDINFO;
 
 static FDDINFO fdd;
+
+// Bumped on every seek/read/write so the UI can flash a drive's access lamp.
+volatile unsigned int FDD_ActivityCount[4];
 static int (*SetFD[4])(int, char*)                             = { 0, XDF_SetFD,        D88_SetFD,        DIM_SetFD };
 static int (*Eject[4])(int)                                    = { 0, XDF_Eject,        D88_Eject,        DIM_Eject };
 static int (*Seek[4])(int, int, FDCID*)                        = { 0, XDF_Seek,         D88_Seek,         DIM_Seek };
@@ -224,7 +227,10 @@ int FDD_Seek(int drv, int trk, FDCID* id)
 	if ( (drv<0)||(drv>3) ) return FALSE;
 	type = fdd.Types[drv];
 	if ( Seek[type] )
+	{
+		FDD_ActivityCount[drv]++;
 		return Seek[type](drv, trk, id);
+	}
 	else
 		return FALSE;
 }
@@ -235,7 +241,10 @@ int FDD_ReadID(int drv, FDCID* id)
 	if ( (drv<0)||(drv>3) ) return FALSE;
 	type = fdd.Types[drv];
 	if ( ReadID[type] )
+	{
+		FDD_ActivityCount[drv]++;
 		return ReadID[type](drv, id);
+	}
 	else
 		return FALSE;
 }
@@ -246,7 +255,10 @@ int FDD_WriteID(int drv, int trk, unsigned char* buf, int num)
 	if ( (drv<0)||(drv>3) ) return FALSE;
 	type = fdd.Types[drv];
 	if ( WriteID[type] )
+	{
+		FDD_ActivityCount[drv]++;
 		return WriteID[type](drv, trk, buf, num);
+	}
 	else
 		return FALSE;
 }
@@ -259,7 +271,10 @@ int FDD_Read(int drv, FDCID* id, unsigned char* buf)
     if ( (drv<0)||(drv>3) ) return FALSE;
 	type = fdd.Types[drv];
 	if ( Read[type] )
+	{
+		FDD_ActivityCount[drv]++;
 		return Read[type](drv, id, buf);
+	}
 	else
 		return FALSE;
 }
@@ -271,7 +286,10 @@ int FDD_ReadDiag(int drv, FDCID* id, FDCID* retid, unsigned char* buf)
 	if ( (drv<0)||(drv>3) ) return FALSE;
 	type = fdd.Types[drv];
 	if ( ReadDiag[type] )
+	{
+		FDD_ActivityCount[drv]++;
 		return ReadDiag[type](drv, id, retid, buf);
+	}
 	else
 		return FALSE;
 }
@@ -283,7 +301,10 @@ int FDD_Write(int drv, FDCID* id, unsigned char* buf, int del)
 	if ( (drv<0)||(drv>3) ) return FALSE;
 	type = fdd.Types[drv];
 	if ( Write[type] )
+	{
+		FDD_ActivityCount[drv]++;
 		return Write[type](drv, id, buf, del);
+	}
 	else
 		return FALSE;
 }

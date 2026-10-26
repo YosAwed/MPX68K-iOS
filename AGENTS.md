@@ -3,6 +3,7 @@
 ## Project Structure & Module Organization
 - `X68000 Shared/`: Cross‑platform Swift code (GameScene, FileSystem, X68Logger, X68Security, px68k core).
 - `X68000 macOS/`: macOS UI, app lifecycle, menus, entitlements.
+- `X68000 iOS/`: iOS / iPadOS / iPhone Duo app (this repository is the iOS port). Built from the generated `MPX68K iOS.xcodeproj` (scheme `MPX68K iOS`); read `docs/IOS_HANDOFF.md` and `docs/IOS_PORT_PLAN.md` first.
 - `c68k/`: Independent M68000 CPU emulator Xcode project (static library dependency).
 - `zsrc/`: Standalone C++ X68000Z emulator sources.
 - `build/`: Generated archives/packages; do not edit by hand. See `README.md` and `ARCHITECTURE.md` for deeper context.

@@ -15,5 +15,6 @@ void SASI_ClearDirtyFlag(int drive);
 void SASI_SetDirtyFlag(int drive);
 
 extern char SASI_Name[16][MAX_PATH];
+extern volatile unsigned int HDD_ActivityCount;
 
 #endif //_winx68k_sasi

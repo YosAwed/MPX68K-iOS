@@ -1162,6 +1162,8 @@ static DWORD SCSIU_GetBlockSize(void) { return 512; }
 static BYTE*
 SCSI_ImgBuf(void)
 {
+	// Every SCSI image access goes through here: let the UI flash the HDD lamp.
+	HDD_ActivityCount++;
 #if MPX68K_HAVE_IOKIT_USB
 	if (X68000_GetStorageBusMode() == 2) {
 		return s_scsiu_boot_cache;
@@ -2790,6 +2792,9 @@ static void SCSI_HandleIOCS(BYTE cmd)
 		C68k_Set_DReg(&C68K, 0, 0xFFFFFFFF);
 		return;
 	}
+	// A command for the disk: let the UI flash the HD BUSY lamp. Transfers here
+	// copy from s_disk_image_buffer directly instead of going through SCSI_ImgBuf.
+	HDD_ActivityCount++;
 
 		switch (cmd) {
 	case 0x20: {  // _S_INQUIRY
@@ -4437,6 +4442,8 @@ static void SCSI_HandleDeviceCommandImpl(void)
 	if (reqpkt == 0) {
 		return;
 	}
+	// Device driver requests also reach the image directly: flash the HD BUSY lamp.
+	HDD_ActivityCount++;
 	if (!SCSI_IsLinearRamRange(reqpkt, 6)) {
 		SCSI_LogText("SCSI_DEV reqpkt range error");
 		s_scsi_dev_reqpkt = 0;

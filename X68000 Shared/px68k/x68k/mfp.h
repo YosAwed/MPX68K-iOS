@@ -33,6 +33,7 @@ extern	BYTE MFP[24];
 //extern long Timer_Prescaler[8];
 extern long Timer_Count[4];
 extern BYTE LastKey;
+extern volatile BYTE MFP_KeyboardLEDs;
 //extern BYTE KeyReadFlag;
 
 void MFP_Init(void);
