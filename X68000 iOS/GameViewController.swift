@@ -275,9 +275,10 @@ final class GameViewController: UIViewController {
 
     /// iPhone Duo: switch the "CRT" off while folding shut and back on while opening.
     private func setUpHingeEffect() {
-        #if DEBUG
+        #if DEBUG && targetEnvironment(simulator)
         // The simulator's Device Hub switches poses without intermediate angles, so
-        // preview the CRT effect with a three-finger double tap on the screen.
+        // preview the CRT effect with a three-finger double tap on the screen. On a device
+        // (even a Debug build) the real hinge drives it and these controls stay out.
         let preview = UITapGestureRecognizer(target: self, action: #selector(toggleCRTPreview))
         preview.numberOfTouchesRequired = 3
         preview.numberOfTapsRequired = 2
@@ -342,7 +343,7 @@ final class GameViewController: UIViewController {
         #endif
     }
 
-    #if DEBUG
+    #if DEBUG && targetEnvironment(simulator)
     /// Command-Shift-P also previews the CRT effect (easier than three fingers in the simulator).
     override var keyCommands: [UIKeyCommand]? {
         [UIKeyCommand(title: "CRT 電源演出", action: #selector(toggleCRTPreview),
