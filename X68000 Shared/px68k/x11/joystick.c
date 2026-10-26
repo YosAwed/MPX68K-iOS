@@ -45,11 +45,12 @@ typedef struct {
 	BYTE nibble[CYBER_NIBBLES];
 	int active;			// a report is being sent
 	uint64_t start;		// CPU cycles at which the first nibble's half steps begin
+	unsigned requests;	// reports requested so far (REQ falling edges)
 } CyberStick;
 
 static CyberStick cyber[2] = {
-	{ 0, 0x80, { 0 }, 0, 0 },
-	{ 0, 0x80, { 0 }, 0, 0 },
+	{ 0, 0x80, { 0 }, 0, 0, 0 },
+	{ 0, 0x80, { 0 }, 0, 0, 0 },
 };
 static uint64_t cpu_cycles = 0;		// cycles of the finished CPU slices
 static long cpu_clock_mhz = 10;
@@ -85,6 +86,11 @@ int X68000_Joystick_IsCyberStick(BYTE num)
 void X68000_Joystick_SetThrottle(BYTE num, BYTE value)
 {
 	if (num <= 1) cyber[num].throttle = value;
+}
+
+unsigned X68000_Joystick_CyberStickRequests(BYTE num)
+{
+	return (num <= 1) ? cyber[num].requests : 0;
 }
 
 // Latches a report from the digital state (stick at full deflection, triggers A/B).
@@ -198,6 +204,7 @@ void FASTCALL Joystick_Write(BYTE num, BYTE data)
 			cyber[num].start = Joystick_Now()
 				+ (uint64_t)CYBER_START_US * (uint64_t)cpu_clock_mhz;
 			cyber[num].active = 1;
+			cyber[num].requests++;
 		}
 		JoyPortData[num] = data;
 	}

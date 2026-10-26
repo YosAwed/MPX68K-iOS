@@ -30,6 +30,8 @@ void X68000_Joystick_SetCyberStick(BYTE num, int enabled);
 int X68000_Joystick_IsCyberStick(BYTE num);
 // Throttle (channel 2): 0x00 = pushed fully forward ... 0xFF = pulled fully back, 0x80 = middle.
 void X68000_Joystick_SetThrottle(BYTE num, BYTE value);
+// Reports the guest has requested from the CYBER STICK so far (for diagnostics).
+unsigned X68000_Joystick_CyberStickRequests(BYTE num);
 
 // Emulated CPU time for the CYBER STICK protocol: the main loop reports each executed
 // slice and the clock; WinX68k_CyclesInSlice (winx68k.cpp) gives the progress inside

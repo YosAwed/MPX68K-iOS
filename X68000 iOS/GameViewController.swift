@@ -325,6 +325,12 @@ final class GameViewController: UIViewController {
             debugHingeLabel.leadingAnchor.constraint(equalTo: hingeSlider.trailingAnchor, constant: 8),
             debugHingeLabel.centerYAnchor.constraint(equalTo: button.centerYAnchor),
         ])
+        // Joystick 1's state for diagnosing the CYBER STICK: off (STD), or the number of
+        // reports the guest has requested and the throttle sent.
+        _ = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] timer in
+            guard let self else { timer.invalidate(); return }
+            self.updateDebugHingeLabel()
+        }
         #endif
         #if canImport(UIKit.UIArrangementViewController)
         if #available(iOS 27.1, *) {
@@ -354,9 +360,19 @@ final class GameViewController: UIViewController {
     private let debugHingeLabel = UILabel()
 
     @objc private func debugHingeSliderChanged(_ slider: UISlider) {
-        let degrees = CGFloat(slider.value.rounded())
-        debugHingeLabel.text = "\(Int(degrees))°"
-        applyHingeAngle(degrees)
+        applyHingeAngle(CGFloat(slider.value.rounded()))
+        updateDebugHingeLabel()
+    }
+
+    private func updateDebugHingeLabel() {
+        let angle = hingeDegrees.map { "\(Int($0.rounded()))°" } ?? "--°"
+        let joystick: String
+        if X68000_Joystick_IsCyberStick(0) != 0 {
+            joystick = String(format: "CYB req %u thr $%02X", X68000_Joystick_CyberStickRequests(0), currentThrottle)
+        } else {
+            joystick = "STD"
+        }
+        debugHingeLabel.text = "\(angle)  \(joystick)"
     }
     #endif
 

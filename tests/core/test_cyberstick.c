@@ -100,7 +100,9 @@ int main(void)
 
 	/* Stick up, trigger A, throttle 0x3c, read the Sharp way at 10 MHz. */
 	X68000_Joystick_SetThrottle(0, 0x3c);
+	assert(X68000_Joystick_CyberStickRequests(0) == 0);
 	read_sharp(nib);
+	assert(X68000_Joystick_CyberStickRequests(0) == 1);
 	check_report(nib, 12, 0x00, 0x80, 0x3c, 0x01);
 	/* After the report the lines go idle again. */
 	run(1000);
