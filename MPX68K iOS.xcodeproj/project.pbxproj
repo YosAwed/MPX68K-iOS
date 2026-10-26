@@ -2058,7 +2058,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastSwiftUpdateCheck = 2700;
-				LastUpgradeCheck = 2700;
+				LastUpgradeCheck = 2710;
 				ORGANIZATIONNAME = NANKIN;
 			};
 			buildConfigurationList = 611023CE13C29804FAFF3238;
