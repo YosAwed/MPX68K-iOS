@@ -57,6 +57,10 @@ unsigned char* X68000_GetSASI_IPLROMPointer();
 
 
 void X68000_Joystick_Set( unsigned char num, unsigned char data);
+void X68000_Joystick_SetCyberStick( unsigned char num, int enabled );
+int X68000_Joystick_IsCyberStick( unsigned char num );
+void X68000_Joystick_SetThrottle( unsigned char num, unsigned char value );
+unsigned X68000_Joystick_CyberStickRequests( unsigned char num );
 
 void X68000_EjectFDD( const long drive );
 const int X68000_IsFDDReady( const long drive );

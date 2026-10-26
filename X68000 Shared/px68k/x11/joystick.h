@@ -2,6 +2,7 @@
 #define winx68k_joy_h
 
 #include "common.h"
+#include <stdint.h>
 
 #define	JOY_UP		0x01
 #define	JOY_DOWN	0x02
@@ -22,6 +23,22 @@ void Joystick_Cleanup(void);
 BYTE FASTCALL Joystick_Read(BYTE num);
 void FASTCALL Joystick_Write(BYTE num, BYTE data);
 void FASTCALL Joystick_Update(void);
+
+// CYBER STICK (Sharp CZ-8NJ2, Dempa XE-1AJ protocol) in analog mode on a joystick port.
+// The stick and triggers A/B come from X68000_Joystick_Set; the throttle is set separately.
+void X68000_Joystick_SetCyberStick(BYTE num, int enabled);
+int X68000_Joystick_IsCyberStick(BYTE num);
+// Throttle (channel 2): 0x00 = pushed fully forward ... 0xFF = pulled fully back, 0x80 = middle.
+void X68000_Joystick_SetThrottle(BYTE num, BYTE value);
+// Reports the guest has requested from the CYBER STICK so far (for diagnostics).
+unsigned X68000_Joystick_CyberStickRequests(BYTE num);
+
+// Emulated CPU time for the CYBER STICK protocol: the main loop reports each executed
+// slice and the clock; WinX68k_CyclesInSlice (winx68k.cpp) gives the progress inside
+// the slice that is running.
+void Joystick_CPUSliceDone(int cycles);
+void Joystick_SetCPUClockMHz(long mhz);
+int WinX68k_CyclesInSlice(void);
 
 extern BYTE joy[2];
 extern BYTE JoyKeyState;

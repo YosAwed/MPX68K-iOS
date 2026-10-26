@@ -847,6 +847,91 @@ private final class ModulePanelView: UIView {
     }
 }
 
+// MARK: - CYBER STICK throttle
+
+/// Shows the CYBER STICK throttle for a moment while the hinge moves it.
+final class ThrottleHUDView: UIView {
+    private let titleLabel = UILabel()
+    private let bar = UIView()
+    private let fill = UIView()
+    private let percentLabel = UILabel()
+    /// 0 = pulled fully back, 1 = pushed fully forward.
+    private var level: CGFloat = 0.5
+    private var hideTimer: Timer?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backgroundColor = UIColor.black.withAlphaComponent(0.6)
+        layer.cornerRadius = 10
+        layer.borderWidth = 1
+        layer.borderColor = UIColor.white.withAlphaComponent(0.15).cgColor
+        isUserInteractionEnabled = false
+        alpha = 0
+
+        titleLabel.text = "THROTTLE"
+        titleLabel.font = .systemFont(ofSize: 8, weight: .bold)
+        titleLabel.textColor = UIColor.white.withAlphaComponent(0.7)
+        percentLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .semibold)
+        percentLabel.textColor = .white
+        percentLabel.textAlignment = .center
+        bar.backgroundColor = UIColor.white.withAlphaComponent(0.12)
+        bar.layer.cornerRadius = 3
+        bar.clipsToBounds = true
+        fill.backgroundColor = UIColor(red: 1.0, green: 0.62, blue: 0.2, alpha: 1)
+        bar.addSubview(fill)
+
+        let stack = UIStackView(arrangedSubviews: [titleLabel, bar, percentLabel])
+        stack.axis = .vertical
+        stack.alignment = .center
+        stack.spacing = 4
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: topAnchor, constant: 8),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+            bar.widthAnchor.constraint(equalToConstant: 12),
+            bar.heightAnchor.constraint(equalToConstant: 64),
+            percentLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 40),
+        ])
+        isAccessibilityElement = true
+        accessibilityLabel = "スロットル"
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        let height = bar.bounds.height * level
+        fill.frame = CGRect(x: 0, y: bar.bounds.height - height, width: bar.bounds.width, height: height)
+    }
+
+    /// Shows `level` (0 = back ... 1 = forward) and fades out shortly after the last change.
+    func show(level newLevel: CGFloat) {
+        level = min(1, max(0, newLevel))
+        percentLabel.text = "\(Int((level * 100).rounded()))%"
+        accessibilityValue = percentLabel.text
+        setNeedsLayout()
+        layoutIfNeeded()
+        hideTimer?.invalidate()
+        if alpha < 1 {
+            UIView.animate(withDuration: 0.15) { self.alpha = 1 }
+        }
+        hideTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { [weak self] _ in
+            UIView.animate(withDuration: 0.4) { self?.alpha = 0 }
+        }
+    }
+
+    func hide() {
+        hideTimer?.invalidate()
+        hideTimer = nil
+        alpha = 0
+    }
+}
+
 // MARK: - Lower panel picker
 
 /// What the lower half shows when the inner display is upright (L-shaped / laptop

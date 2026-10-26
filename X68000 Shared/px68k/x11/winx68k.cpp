@@ -839,6 +839,19 @@ static int WinX68k_FieldCycles10M(int *active_vline_total)
         VLINE_TOTAL, active_vline_total);
 }
 
+// Cycles the CPU has run in the slice that is executing now (0 between slices).
+// Devices that time themselves against the CPU (the CYBER STICK) add this to the
+// cycles of the finished slices.
+int WinX68k_CyclesInSlice(void)
+{
+#if defined(HAVE_C68K)
+    s32 done = C68k_Get_CycleDone(&C68K);
+    return (done > 0) ? (int)done : 0;
+#else
+    return 0;
+#endif
+}
+
 // -----------------------------------------------------------------------------------
 //  �����Τᤤ��롼��
 // -----------------------------------------------------------------------------------
@@ -857,6 +870,7 @@ void WinX68k_Exec(const long clockMHz, const long vsync)
     DWORD t_start = timeGetTime(), t_end;
 
     SysPort_SetClockMHz(clockMHz);
+    Joystick_SetCPUClockMHz(clockMHz);
 
     if ( Config.FrameRate != 7 ) {
         DispFrame = (DispFrame+1)%Config.FrameRate;
@@ -984,6 +998,7 @@ void WinX68k_Exec(const long clockMHz, const long vsync)
             #if defined (HAVE_CYCLONE)
                         m68000_execute(n);
                         m = n;
+                        Joystick_CPUSliceDone(m);
 #elif defined (HAVE_C68K)
                         {
                             // c68k finishes the instruction that crosses the
@@ -995,6 +1010,7 @@ void WinX68k_Exec(const long clockMHz, const long vsync)
                             // slice then so the field still advances.
                             s32 ran = C68k_Exec(&C68K, n);
                             m = (ran < 0) ? n : (int)ran;
+                            Joystick_CPUSliceDone(m);
                         }
                         if (SCSI_HasDeferredBoot()) {
                             SCSI_CommitDeferredBoot();

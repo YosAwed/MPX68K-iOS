@@ -436,7 +436,7 @@ def main():
         "attributes": {
             "BuildIndependentTargetsInParallel": "YES",
             "LastSwiftUpdateCheck": "2700",
-            "LastUpgradeCheck": "2700",
+            "LastUpgradeCheck": "2710",
             "ORGANIZATIONNAME": "NANKIN",
         },
         "buildConfigurationList": config_list(builder, "project", project_settings),
@@ -474,7 +474,7 @@ def write_scheme(target_id):
            f'BuildableName = "MPX68K.app" BlueprintName = "{IOS_TARGET_NAME}" '
            f'ReferencedContainer = "container:MPX68K iOS.xcodeproj"></BuildableReference>')
     scheme = f"""<?xml version="1.0" encoding="UTF-8"?>
-<Scheme LastUpgradeVersion = "2700" version = "1.7">
+<Scheme LastUpgradeVersion = "2710" version = "1.7">
    <BuildAction parallelizeBuildables = "YES" buildImplicitDependencies = "YES">
       <BuildActionEntries>
          <BuildActionEntry buildForTesting = "YES" buildForRunning = "YES" buildForProfiling = "YES" buildForArchiving = "YES" buildForAnalyzing = "YES">
