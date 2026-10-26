@@ -17,7 +17,10 @@ open "MPX68K iOS.xcodeproj"
 ```
 
 - **Xcode**: 通常ビルドは Xcode 27.0 以降。iPhone Duo（全画面表示・`UIArrangementViewController`・`UIHingeInteraction`）の確認には
-  **Xcode 27.1 beta** が必要。コマンドラインでは `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer` を付ける。
+  **Xcode 27.1** と **iOS 27.1 シミュレータランタイム** が必要。現在の Mac では `/Applications/Xcode.app` が 27.1（27A9275）なので、
+  コマンドラインでは `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` を付ける。ランタイムがなければ
+  `xcodebuild -downloadPlatform iOS -buildVersion 27.1`（約 7.9 GB）で入れ、
+  `xcrun simctl create "iPhone Duo" com.apple.CoreSimulator.SimDeviceType.iPhone-Duo com.apple.CoreSimulator.SimRuntime.iOS-27-1` で作る。
 - **スキーム**: `MPX68K iOS`（iOS）。macOS 版は `X68000.xcodeproj` の `X68000 macOS`（事前に `c68k mac` のビルドが必要）。
 - **ROM**（リポジトリには絶対に入れない）: `IPLROM.DAT` / `CGROM.DAT` を用意する（旧 Mac では `~/Documents/X68IPL/` に置いていた）。
   アプリ初回起動時に「ROM ファイルが必要です」→ ピッカーで取り込める。シミュレータに直接置く場合:
@@ -37,6 +40,7 @@ open "MPX68K iOS.xcodeproj"
 |---|---|---|
 | `master` | iOS 版一式（iPhone Duo 対応、フルキーボード、CRT 演出、ディスクメニュー、内蔵 SC-55 / MT-32） | PR #1 と `ios/disk-menu`・`ios/mt32` を統合済み |
 | `ios/merge-upstream-4.5` | `master` ＋ upstream MPX68K 4.5（#31 コア修正、#32 CPU クロック / Turbo / サウンドスレッド整理） | iOS・macOS ビルド、`tests/core`、iPad 実機での FM / ADPCM / SC-55 再生を確認済み |
+| `ios/duo-posture` | iPhone Duo の姿勢別パネル（L 字のランプ列と下半分の切り替え、本の持ち方のドライブベイ）、HD BUSY・画面枠の修正 | PR #5。iPhone Duo シミュレータで確認済み（`IOS_PORT_PLAN.md`） |
 | `ios/bootstrap`, `ios/phase1-target`, `ios/phase2-boot`, `ios/disk-menu`, `ios/mt32` | 過去の段階（すべて `master` に含まれる） | 削除してよい |
 
 - `origin` = YosAwed/MPX68K-iOS（private）、`upstream` = YosAwed/MPX68K（macOS 版、public）。
@@ -52,7 +56,9 @@ open "MPX68K iOS.xcodeproj"
    - ヒンジ連動の CRT 電源演出（閉じ 50° / 開き 70° のしきい値、速さ）
    - タッチマウスの感度
    - 画面サイズ変更時の重さ（Debug ビルドは c68k 以外が最適化なしで重い。Release での体感も要確認。エミュレーションはメインスレッド）
-5. 任意: キー配列・F キー等の macOS 側残課題（`IOS_PORT_PLAN.md` 参照。F キーは macOS 側で意図的に別処理なので対応不要）。
+5. SCSI イメージ（`.HDS`）から起動できない件を調べる: `900MSCSIHDD.HDS` を接続し、フロッピーなしでリセットすると
+   「Human.sys が壊れています」で止まる（`master` でも同じ）。macOS 版で起動できるかの比較から始める。
+6. 任意: キー配列・F キー等の macOS 側残課題（`IOS_PORT_PLAN.md` 参照。F キーは macOS 側で意図的に別処理なので対応不要）。
 
 ### iPad 実機でのテスト
 
@@ -80,7 +86,14 @@ SC-55 は `sc55_rom1.bin` `sc55_rom2.bin` `sc55_waverom1.bin` `sc55_waverom2.bin
     3 本指タップと ⌘ ショートカットは Device Hub から届かない。
   - `simctl` からアプリを起動するとバックグラウンドのままのことがある（Device Hub でタップして前面へ）。
   - 画面の取得は `xcrun simctl io <UDID> screenshot --display=<UUID>`（`simctl io <UDID> enumerate` で 2007×2853=内側、1398×2034=外側）。
-  - Claude Code の iOS シミュレータ操作ツールは iPhone Duo に接続できず、Xcode 27.1 のシミュレータサービスが動いている間は他の機種も操作できなくなった。
+  - 姿勢（閉・L 字・本の持ち方・全開）は Device Hub の GUI でしか変えられない。`simctl` には開閉の操作がなく、
+    `devicectl device orientation` も縦横の向きだけ。
+  - Claude Code の iOS シミュレータ操作ツールは、2026-10-26（Xcode 27.1 27A9275）の時点で iPhone Duo に接続でき、
+    外側・内側どちらのディスプレイもタップと撮影ができた（そのとき表示中のディスプレイが対象。入力の反映は少し遅れる）。
+    以前は接続できなかった。
+  - ランプの点灯のような短い変化は、`xcrun simctl io <UDID> recordVideo --display=<UUID>` で録画して確かめる
+    （`simctl io screenshot` の連写では間に合わない）。
+  - Xcode 27.1 の `simctl` を使うと、シミュレータのサービスが 27.1 版に置き換わり、起動中の他のシミュレータは止まる。
 - **閉じた状態での上下逆さの縦向き**は iOS がアプリを回さない（OS の仕様とみて現状維持）。
 - 旧リポジトリ `X68iOS-master` の `CGROM_DAT.c` / `IPLROM_DAT.c` には ROM ダンプが入っているので公開しないこと（MPX68K-iOS では空の定義になっている）。
 

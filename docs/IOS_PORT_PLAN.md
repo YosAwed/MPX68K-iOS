@@ -193,10 +193,29 @@ iPhoneOS 27.0 SDK（arm64, `-DHAVE_C68K -DTARGET_IOS`）で `clang -fsyntax-only
 - 姿勢が変わったときは、操作パネルをクロスフェードで切り替える。
 - コアに追加したもの（macOS の動作は変わらない）:
   - `FDD_ActivityCount[]`（fdd.c、シーク・読み書きのたびに加算）
-  - `HDD_ActivityCount`（sasi.c、SASI の読み書きと SCSI のイメージ参照で加算）
+  - `HDD_ActivityCount`（sasi.c で定義。SASI は実際のセクタ読み書きの `SASI_Seek` / `SASI_Flush`、
+    SCSI は `SCSI_HandleIOCS` / `SCSI_HandleDeviceCommandImpl` の 1 コマンドごとに加算。実機の HD BUSY も
+    バスのアクセスで点く。`Sasi_Read` / `Sasi_Write` / `SCSI_ImgBuf` を通らない経路が多いので、そこだけでは点かない）
   - `MFP_KeyboardLEDs`（mfp.c、UDR へ書かれた $80〜$FF の LED コマンド。ビット 0 が点灯）
   - 取得は `X68000_GetFDDActivity` / `X68000_GetHDDActivity` / `X68000_GetKeyboardLEDs`。
     UI 側は `StatusLampMonitor` が 30 Hz で読み、アクセスの後 0.12 秒ランプを点ける。
-- 実機・シミュレータで確認が要るもの: L 字でのランプ列と切り替えの幅（626 pt 前後で収まる想定）、本の持ち方での
-  ドライブベイの高さ、キーボード LED のビットの向き（Human68k で CAPS やかなを押して確認）。
+- UIStackView の並びに入っているビュー（ランプ列のキーボード LED、上段の切り替え・ボタン）は
+  `setHiddenInStackView` で表示を切り替える。姿勢変更はアニメーションの中で `applyInputMode()` が 2 回呼ばれ、
+  UIStackView はアニメーション中の `isHidden = true` の重ねがけを数えるので、値が変わるときだけ設定しないと
+  本の持ち方 → L 字でキーボード LED が消えたままになった。
+- 画面（`ScreenViewController`）は左右に常に枠の幅＋2 pt の余白を取る。本の持ち方の左ペインでは画面が幅いっぱいに
+  なり、safe area が表示の端まで届くため、枠の左端が切れていた（`master` でも同じだった）。
+
+#### 動作確認（2026-10-26, iPhone Duo シミュレータ / iOS 27.1, Human68k 3.02）
+
+- 閉: ディスクメニューから起動。
+- L 字: ランプ列は切り替えと 1 行に収まる。CAPS・かなで対応する LED が点く（ビットの向きは合っている）。
+  キーボード／パッド／トラックパッドの切り替え、本の持ち方 → L 字でも LED が残ることを確認。
+- アクセスランプ（`simctl io recordVideo` の録画で確認）: `DIR B:` で FDD1、`.HDF` 接続時の `DIR C:` で HD BUSY、
+  `.HDS` 接続時の起動で HD BUSY が点く。A: の `SYS` / `BIN` などは起動時に読まれてバッファに残っているので、
+  `DIR` してもディスクを読まずランプは点かない。
+- 本の持ち方: ドライブベイの 3 スロット、スロットのタップでメニュー、取り出し後のスロット表示の更新。
+- 未確認: 姿勢変更のクロスフェード（シミュレータは開閉が段階的で、直後はぼかした静止画になる）。
+- 既知の問題（`master` でも同じ）: `900MSCSIHDD.HDS`（SCSI）から起動すると「Human.sys が壊れています」で止まる。
+  フロッピーから起動した Human68k では SCSI ドライバが組み込まれず C: も見えない。
 
