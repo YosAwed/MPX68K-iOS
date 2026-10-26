@@ -59,6 +59,19 @@ final class GameViewController: UIViewController {
     private let diskButton = UIButton(type: .system)
     private let topButtonRow = UIStackView()
     private var padUsesCursorKeys = UserDefaults.standard.bool(forKey: GameViewController.padCursorKeysDefaultsKey)
+    /// Joystick port 1 is a CYBER STICK in analog mode; its throttle follows the hinge.
+    private static let cyberStickDefaultsKey = "ios_cyber_stick"
+    private var usesCyberStick = UserDefaults.standard.bool(forKey: GameViewController.cyberStickDefaultsKey) {
+        didSet {
+            guard usesCyberStick != oldValue else { return }
+            UserDefaults.standard.set(usesCyberStick, forKey: Self.cyberStickDefaultsKey)
+            applyCyberStick()
+        }
+    }
+    /// Last hinge angle in degrees while open (nil: no hinge).
+    private var hingeDegrees: CGFloat?
+    private var currentThrottle: UInt8 = 0x80
+    private let throttleHUD = ThrottleHUDView()
     private var lastPadBits: UInt8 = 0
 
     // MARK: Layout
@@ -141,6 +154,8 @@ final class GameViewController: UIViewController {
 
         setUpTouchInput(on: skView)
         setUpHingeEffect()
+        setUpThrottleHUD()
+        applyCyberStick()
 
         NotificationCenter.default.addObserver(
             self, selector: #selector(diskImageLoadFinished(_:)),
@@ -325,11 +340,15 @@ final class GameViewController: UIViewController {
         guard let hinge else {
             // No hinge in this hierarchy (not an iPhone Duo).
             screenController.resetPower()
+            hingeDegrees = nil
+            updateThrottle(showsHUD: false)
             return
         }
         switch hinge.status {
         case .partiallyOpen, .fullyOpen:
             let degrees = hinge.angle * 180 / .pi
+            hingeDegrees = degrees
+            updateThrottle()
             if degrees < Self.crtOffAngle {
                 screenController.powerOff()
             } else if degrees > Self.crtOnAngle {
@@ -341,6 +360,68 @@ final class GameViewController: UIViewController {
         }
     }
     #endif
+
+    // MARK: - CYBER STICK
+
+    /// Hinge angles for the CYBER STICK throttle: 80° or less pulls it fully back, 170° or
+    /// more pushes it fully forward. Folding further (below 70°) is left to the CRT effect.
+    private static let throttleBackAngle: CGFloat = 80
+    private static let throttleForwardAngle: CGFloat = 170
+
+    /// Throttle value for the core: 0x00 = pushed fully forward ... 0xFF = pulled fully back.
+    static func throttle(forHingeDegrees degrees: CGFloat) -> UInt8 {
+        let forward = (degrees - throttleBackAngle) / (throttleForwardAngle - throttleBackAngle)
+        return UInt8(((1 - min(1, max(0, forward))) * 255).rounded())
+    }
+
+    private func applyCyberStick() {
+        X68000_Joystick_SetCyberStick(0, usesCyberStick ? 1 : 0)
+        if usesCyberStick {
+            updateThrottle(showsHUD: false)
+        } else {
+            throttleHUD.hide()
+        }
+    }
+
+    /// Sends the throttle for the current hinge angle (the middle without a hinge).
+    private func updateThrottle(showsHUD: Bool = true) {
+        guard usesCyberStick else { return }
+        let value = hingeDegrees.map(Self.throttle(forHingeDegrees:)) ?? 0x80
+        let changed = value != currentThrottle
+        currentThrottle = value
+        X68000_Joystick_SetThrottle(0, value)
+        if showsHUD && changed {
+            throttleHUD.show(level: CGFloat(255 - Int(value)) / 255)
+        }
+    }
+
+    private func setUpThrottleHUD() {
+        let screenView = screenController.view!
+        throttleHUD.translatesAutoresizingMaskIntoConstraints = false
+        screenView.addSubview(throttleHUD)
+        NSLayoutConstraint.activate([
+            throttleHUD.topAnchor.constraint(equalTo: screenView.safeAreaLayoutGuide.topAnchor, constant: 12),
+            throttleHUD.trailingAnchor.constraint(equalTo: screenView.safeAreaLayoutGuide.trailingAnchor, constant: -16),
+        ])
+    }
+
+    /// Joystick port 1: an ordinary 2-button joystick, or a CYBER STICK in analog mode.
+    private func joystickMenu() -> UIMenu {
+        let standard = UIAction(title: "標準ジョイスティック", subtitle: "2 ボタン",
+                                image: UIImage(systemName: "gamecontroller"),
+                                state: usesCyberStick ? .off : .on) { [weak self] _ in
+            self?.usesCyberStick = false
+        }
+        let cyber = UIAction(title: "CYBER STICK（アナログ）",
+                             subtitle: "スロットルはヒンジの角度（80°〜170°）",
+                             image: UIImage(systemName: "airplane"),
+                             state: usesCyberStick ? .on : .off) { [weak self] _ in
+            self?.usesCyberStick = true
+        }
+        return UIMenu(title: usesCyberStick ? "ジョイスティック：CYBER STICK" : "ジョイスティック：標準",
+                      image: UIImage(systemName: "gamecontroller"),
+                      children: [UIMenu(options: .displayInline, children: [standard, cyber])])
+    }
 
     private func setUpTouchInput(on skView: SKView) {
         touchMouse = TouchMouseController(view: skView) { [weak self] in self?.gameScene }
@@ -511,6 +592,7 @@ final class GameViewController: UIViewController {
         elements.append(hardDiskMenu())
         if let midi = midiMenu() { elements.append(midi) }
         if let speed = speedMenu() { elements.append(speed) }
+        elements.append(joystickMenu())
         let reset = UIAction(title: "リセット", image: UIImage(systemName: "arrow.counterclockwise")) { [weak self] _ in
             self?.gameScene?.resetSystem()
         }

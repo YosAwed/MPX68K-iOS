@@ -11,7 +11,7 @@ git clone https://github.com/YosAwed/MPX68K-iOS.git
 cd MPX68K-iOS
 git remote add upstream https://github.com/YosAwed/MPX68K.git   # macOS 版
 git fetch upstream
-git switch ios/module-lcd                                       # 作業中のブランチ（マージ後は master）
+git switch ios/cyberstick-hinge                                # 作業中のブランチ（ios/module-lcd の上。マージ後は master）
 python3 tools/generate_ios_project.py                           # iOS プロジェクトを再生成（差分が出なければ OK）
 open "MPX68K iOS.xcodeproj"
 ```
@@ -41,7 +41,8 @@ open "MPX68K iOS.xcodeproj"
 | ブランチ | 内容 | 状態 |
 |---|---|---|
 | `master` | iOS 版一式（iPhone Duo 対応、フルキーボード、CRT 演出、ディスクメニュー、内蔵 SC-55 / MT-32）、upstream MPX68K 4.5、速度メニュー、iPhone / iPad 向け README | PR #1〜#4 をマージ済み |
-| `ios/module-lcd` | ドライブベイに内蔵音源（SC-55 / MT-32）の液晶を出す。コアに液晶の状態を読む API を追加（`IOS_PORT_PLAN.md` の「ドライブベイの音源液晶」） | 2026-10-26 Mac mini で作成。C/C++ のテストと実 ROM での表示内容は確認済み。Xcode のビルドとシミュレータでの見た目は未確認 |
+| `ios/cyberstick-hinge` | ジョイスティック 1 を CYBER STICK（アナログ）にでき、スロットルを iPhone Duo のヒンジの角度で動かす。確認用ディスク `tools/cyberstick-test`（`IOS_PORT_PLAN.md` の「CYBER STICK とヒンジのスロットル」） | `ios/module-lcd` から分岐。コアのテストは通る。Xcode のビルドと動作は未確認 |
+| `ios/module-lcd` | ドライブベイに内蔵音源（SC-55 / MT-32）の液晶を出す。コアに液晶の状態を読む API を追加（`IOS_PORT_PLAN.md` の「ドライブベイの音源液晶」） | 2026-10-26 Mac mini で作成。C/C++ のテストと実 ROM での表示内容、Mac でのビルドと表示を確認済み |
 | `ios/duo-posture` | iPhone Duo の姿勢別パネル（L 字のランプ列と下半分の切り替え、本の持ち方のドライブベイ）、HD BUSY・キーボード LED・画面枠の修正、この引き継ぎメモ | PR #5 で `master` にマージ済み。削除してよい |
 | `ios/bootstrap`, `ios/phase1-target`, `ios/phase2-boot`, `ios/disk-menu`, `ios/mt32`, `ios/merge-upstream-4.5`, `ios/speed-menu`, `docs/ios-readme` | 過去の段階（すべて `master` に含まれる） | 削除してよい |
 | `claude/distracted-gould-ab9344` | `.HDS` が起動しない件の調査メモ（docs のみ） | 中身は `ios/duo-posture` のこのファイルに取り込み済み。削除してよい |
@@ -52,7 +53,8 @@ open "MPX68K iOS.xcodeproj"
 
 ## 3. 次にやること
 
-1. `ios/module-lcd` を Xcode でビルドし、iPhone Duo シミュレータの本の持ち方で SC-55 / MT-32 の液晶を確認して `master` へマージ。
+1. `ios/module-lcd` を `master` へマージ。続けて `ios/cyberstick-hinge` を Xcode でビルドし、`sim-media/cyberstick.xdf`
+   （`tools/cyberstick-test` でビルド）を起動して、ヒンジの姿勢でスロットルが変わることを確かめてマージ。
 2. TestFlight 準備: バンドル ID が仮の `NANKIN.MPX68K-iOS`（`tools/generate_ios_project.py` の `PRODUCT_BUNDLE_IDENTIFIER`）。Team は `DQR9HH7KUY`。
 3. 実機（iPhone Duo）でのみ確認できる項目:
    - ヒンジ連動の CRT 電源演出（閉じ 50° / 開き 70° のしきい値、速さ）

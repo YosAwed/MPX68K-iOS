@@ -246,3 +246,25 @@ iPhoneOS 27.0 SDK（arm64, `-DHAVE_C68K -DTARGET_IOS`）で `clang -fsyntax-only
   （未ロード時）。実 ROM（`rom` ターゲット）では、SC-55 が起動 4 秒後に「001 Piano 1」を表示すること、MT-32 が
   起動時のバナー、SysEx の表示メッセージ、ノートオンで MIDI MESSAGE が点くことを確かめる。
   MT-32 の実 ROM テストの SysEx はチェックサムが 0 で、実機どおり「Exc. Checksum error」になっていたので、正しい値にした。
+
+### CYBER STICK とヒンジのスロットル（2026-10-26、ブランチ `ios/cyberstick-hinge`）
+
+- ディスクメニューの「ジョイスティック」で、ジョイスティック 1 を「標準ジョイスティック」（2 ボタン）か
+  「CYBER STICK（アナログ）」にする。選択は `ios_cyber_stick` に保存する。既定は標準
+  （アナログモードの CYBER STICK はふつうのジョイスティックとして読めないため）。
+- CYBER STICK のとき、スロットルは iPhone Duo のヒンジの角度で決まる: 80° 以下でいちばん手前（$FF）、
+  170° 以上でいちばん前（$00）、その間は直線。50° を下回ると CRT の電源演出になるので、そこは使わない。
+  ヒンジのない端末ではスロットルは中央（$80）。変えるとき画面の右上に THROTTLE の表示が 1.5 秒出る（`ThrottleHUDView`）。
+- スティックとトリガー A / B は今までのジョイスティック入力（仮想パッド、ゲームコントローラ）から作る。
+  十字は端まで倒した値（$00 / $80 / $FF）になる。
+- コア（`x11/joystick.c`、macOS の動作は変わらない。既定はオフ）:
+  - 手順は MAME の `micomxe1a.cpp`（Dempa XE-1A 系、BSD-3-Clause）のとおり。REQ（ピン 8、ポート C ビット 4 / 5）の
+    立ち下がりでそのときの状態を取り込み、50 µs 後から 10 µs ごとに「L/H 切り替え（ACK = H）」「データ（ACK = L）」を
+    繰り返して 12 ニブルを出す。ホストは速さを決められない。ポート A はビット 5 = L/H、ビット 6 = ACK、ビット 0〜3 = データ。
+  - 時間はエミュレートした CPU のサイクルで測る。メインループが C68k_Exec のたびに `Joystick_CPUSliceDone` を呼び、
+    実行中のスライスの進みは `WinX68k_CyclesInSlice`（`C68k_Get_CycleDone`）で足す。µs への換算は CPU クロック（MHz）。
+  - API: `X68000_Joystick_SetCyberStick` / `X68000_Joystick_IsCyberStick` / `X68000_Joystick_SetThrottle`。
+- テスト: `tests/core/test_cyberstick.c`（シャープのドライバの読み方で 10 / 24 MHz、遅いポーリング、途中での再要求、
+  待機中の線の状態、オフに戻したときのふつうのジョイスティック）。実機相当の確認用に `tools/cyberstick-test`
+  （セルフブート XDF）を追加した。
+- 未確認: Xcode でのビルド、シミュレータ・実機での動作、CYBER STICK 対応ゲームでの動作。
