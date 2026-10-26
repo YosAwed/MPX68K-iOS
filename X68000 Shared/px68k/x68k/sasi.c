@@ -290,6 +290,7 @@ fclose(fp_trace);
 
 	// Read from memory buffer
 	memcpy(SASI_Buf, s_disk_image_buffer[4] + offset, 256);
+	HDD_ActivityCount++;
 	return 1;
 }
 
@@ -320,6 +321,7 @@ short SASI_Flush(void)
 
 	// Write to memory buffer
 	memcpy(s_disk_image_buffer[4] + offset, SASI_Buf, 256);
+	HDD_ActivityCount++;
 
 	// Mark as dirty for Swift-side saving
 	s_Sasi_dirty_flag[0] = 1;
