@@ -1497,6 +1497,26 @@ const int X68000_IsFDDMounted(const long drive)
     return FDD_IsMounted((int)drive);
 }
 
+// Activity counters for access lamps: they only increase, so the UI compares
+// them with the value it saw last time.
+const unsigned int X68000_GetFDDActivity(const long drive)
+{
+    if (drive < 0 || drive > 3) return 0;
+    return FDD_ActivityCount[drive];
+}
+
+const unsigned int X68000_GetHDDActivity(void)
+{
+    return HDD_ActivityCount;
+}
+
+// Last LED command sent to the keyboard ($80-$FF). A bit that is 0 is lit:
+// b0 かな, b1 ローマ字, b2 コード入力, b3 CAPS, b4 INS, b5 ひらがな, b6 全角.
+const unsigned char X68000_GetKeyboardLEDs(void)
+{
+    return MFP_KeyboardLEDs;
+}
+
 const int X68000_IsFDDWriteProtected(const long drive)
 {
     return FDD_IsReadOnly((int)drive);

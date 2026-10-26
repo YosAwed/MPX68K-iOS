@@ -38,10 +38,23 @@ final class GameViewController: UIViewController {
     private let inputModeButton = UIButton(type: .system)
     private let trackpad = TrackpadSurfaceView()
     private let fullKeyboard = X68KeyboardView()
-    /// Inner display (fully open or partially folded) held upright: show the full keyboard.
-    private var showsFullKeyboard = false {
-        didSet { if showsFullKeyboard != oldValue { applyInputMode() } }
+    /// Inner display (fully open or partially folded) held upright. The lower part then
+    /// shows the keyboard, the pad or the trackpad, as chosen with `innerPanelPicker`.
+    private var isUprightInnerDisplay = false {
+        didSet { if isUprightInnerDisplay != oldValue { applyInputMode() } }
     }
+    private var innerPanel = InnerPanel.saved {
+        didSet {
+            guard innerPanel != oldValue else { return }
+            InnerPanel.saved = innerPanel
+            applyInputMode()
+        }
+    }
+    private let innerPanelPicker = InnerPanelPicker()
+    /// FDD / HDD lamps and the keyboard LEDs above the on-screen keyboard.
+    private let lampStrip = StatusLampStripView()
+    /// Both drives and the hard disk, on the panel's side of the fold in the book posture.
+    private let driveBay = DriveBayView()
     private let padOutputButton = UIButton(type: .system)
     private let diskButton = UIButton(type: .system)
     private let topButtonRow = UIStackView()
@@ -55,8 +68,18 @@ final class GameViewController: UIViewController {
     private var isSplit = false {
         didSet { if isSplit != oldValue { applyInputMode() } }
     }
+    /// iPhone Duo partially folded like a book (fold runs top to bottom): screen on one
+    /// side, the drive bay and the pad / trackpad on the other.
+    private var isBookPosture = false {
+        didSet { if isBookPosture != oldValue { applyInputMode() } }
+    }
     /// Area of the control panel the controls may use.
     private let controlArea = UILayoutGuide()
+    /// Part of the control area for the keyboard, pad or trackpad (below the buttons,
+    /// or below the drive bay in the book posture).
+    private let surfaceArea = UILayoutGuide()
+    private var surfaceTopToButtons: NSLayoutConstraint?
+    private var surfaceTopToDriveBay: NSLayoutConstraint?
     private var controlAreaTopToPanel: NSLayoutConstraint?
     private var controlAreaTopToScreen: NSLayoutConstraint?
     /// Portrait without a fold split: screen at the top, controls in the space below.
@@ -150,18 +173,36 @@ final class GameViewController: UIViewController {
               view.bounds.width > 0, view.bounds.height > 0 else { return }
         let wasSplit = isSplit
         let wasStacked = stacksControlsBelowScreen
-        let wasKeyboard = showsFullKeyboard
+        let wasUpright = isUprightInnerDisplay
+        let wasBook = isBookPosture
         // Overlaid, the panel covers the screen; split by the fold, they don't overlap.
         let panelFrame = controlPanel.view.convert(controlPanel.view.bounds, to: view)
         let screenFrame = screenController.view.convert(screenController.view.bounds, to: view)
-        isSplit = !panelFrame.intersects(screenFrame.insetBy(dx: 1, dy: 1))
+        let split = !panelFrame.intersects(screenFrame.insetBy(dx: 1, dy: 1))
         let isPortrait = view.bounds.height > view.bounds.width
-        stacksControlsBelowScreen = !isSplit && isPortrait
         // The inner display's short side is well over 600 pt; the outer display's is not.
         let screenBounds = view.window?.windowScene?.screen.bounds ?? .zero
         let isInnerDisplay = min(screenBounds.width, screenBounds.height) >= 600
-        showsFullKeyboard = isPortrait && isInnerDisplay
-        if isSplit != wasSplit || stacksControlsBelowScreen != wasStacked || showsFullKeyboard != wasKeyboard {
+        // Side by side (fold from top to bottom) is the book posture; one above the
+        // other (fold from side to side) is the L-shaped / laptop posture.
+        let sideBySide = panelFrame.minX >= screenFrame.maxX - 1 || panelFrame.maxX <= screenFrame.minX + 1
+        let book = split && sideBySide
+        let upright = isPortrait && isInnerDisplay
+        if (split != wasSplit || book != wasBook || upright != wasUpright), view.window != nil {
+            // Folding or unfolding: cross-fade the panel into its new arrangement.
+            let fade = CATransition()
+            fade.type = .fade
+            fade.duration = 0.3
+            controlPanel.view.layer.add(fade, forKey: "posture")
+        }
+        isSplit = split
+        stacksControlsBelowScreen = !split && isPortrait
+        isBookPosture = book
+        isUprightInnerDisplay = upright
+        if isSplit != wasSplit || stacksControlsBelowScreen != wasStacked
+            || isUprightInnerDisplay != wasUpright || isBookPosture != wasBook {
+            // The didSet handlers ran one by one; apply once more with everything current.
+            applyInputMode()
             // Constraints changed from inside a pane's layout pass; lay out again.
             controlPanel.view.setNeedsLayout()
             screenController.view.setNeedsLayout()
@@ -346,14 +387,38 @@ final class GameViewController: UIViewController {
 
         setUpDiskButton()
 
+        innerPanelPicker.translatesAutoresizingMaskIntoConstraints = false
+        innerPanelPicker.selection = innerPanel
+        innerPanelPicker.onChange = { [weak self] panel in self?.innerPanel = panel }
+
         // Hidden buttons collapse, so the disk button stays at the right edge on its own
         // while the full keyboard is shown.
         topButtonRow.axis = .horizontal
         topButtonRow.alignment = .center
         topButtonRow.spacing = 8
-        [diskButton, padOutputButton, inputModeButton].forEach { topButtonRow.addArrangedSubview($0) }
+        [innerPanelPicker, diskButton, padOutputButton, inputModeButton].forEach { topButtonRow.addArrangedSubview($0) }
         topButtonRow.translatesAutoresizingMaskIntoConstraints = false
         panel.addSubview(topButtonRow)
+
+        lampStrip.translatesAutoresizingMaskIntoConstraints = false
+        lampStrip.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        panel.addSubview(lampStrip)
+
+        driveBay.translatesAutoresizingMaskIntoConstraints = false
+        driveBay.menuProvider = { [weak self] drive in
+            guard let self else { return [] }
+            switch drive {
+            case .floppy(let number): return self.floppyMenu(for: number).children
+            case .hardDisk: return self.hardDiskMenu().children
+            }
+        }
+        driveBay.onEject = { [weak self] drive in
+            switch drive {
+            case .floppy(let number): self?.gameScene?.ejectFDDFromDrive(number)
+            case .hardDisk: self?.gameScene?.ejectHDD()
+            }
+        }
+        panel.addSubview(driveBay)
 
         panel.addLayoutGuide(controlArea)
         let guide = controlArea
@@ -361,6 +426,10 @@ final class GameViewController: UIViewController {
         controlAreaTopToPanel = controlArea.topAnchor.constraint(equalTo: safe.topAnchor)
         controlAreaTopToScreen = controlArea.topAnchor.constraint(equalTo: skView.bottomAnchor, constant: 4)
         controlAreaTopToPanel?.isActive = true
+        panel.addLayoutGuide(surfaceArea)
+        surfaceTopToButtons = surfaceArea.topAnchor.constraint(equalTo: topButtonRow.bottomAnchor)
+        surfaceTopToDriveBay = surfaceArea.topAnchor.constraint(equalTo: driveBay.bottomAnchor, constant: 4)
+        surfaceTopToButtons?.isActive = true
         NSLayoutConstraint.activate([
             controlArea.leadingAnchor.constraint(equalTo: safe.leadingAnchor),
             controlArea.trailingAnchor.constraint(equalTo: safe.trailingAnchor),
@@ -368,22 +437,38 @@ final class GameViewController: UIViewController {
 
             fullKeyboard.leadingAnchor.constraint(equalTo: guide.leadingAnchor, constant: 6),
             fullKeyboard.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -6),
-            fullKeyboard.topAnchor.constraint(equalTo: topButtonRow.bottomAnchor, constant: 6),
+            fullKeyboard.topAnchor.constraint(equalTo: surfaceArea.topAnchor, constant: 6),
             fullKeyboard.bottomAnchor.constraint(equalTo: guide.bottomAnchor, constant: -8),
 
             virtualPad.leadingAnchor.constraint(equalTo: guide.leadingAnchor),
             virtualPad.trailingAnchor.constraint(equalTo: guide.trailingAnchor),
-            virtualPad.topAnchor.constraint(equalTo: topButtonRow.bottomAnchor),
+            virtualPad.topAnchor.constraint(equalTo: surfaceArea.topAnchor),
             virtualPad.bottomAnchor.constraint(equalTo: guide.bottomAnchor),
 
             trackpad.leadingAnchor.constraint(equalTo: guide.leadingAnchor, constant: 16),
             trackpad.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -16),
-            trackpad.topAnchor.constraint(equalTo: topButtonRow.bottomAnchor, constant: 12),
+            trackpad.topAnchor.constraint(equalTo: surfaceArea.topAnchor, constant: 12),
             trackpad.bottomAnchor.constraint(equalTo: guide.bottomAnchor, constant: -16),
 
             topButtonRow.topAnchor.constraint(equalTo: guide.topAnchor, constant: 8),
             topButtonRow.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -12),
             topButtonRow.heightAnchor.constraint(equalToConstant: 44),
+
+            surfaceArea.leadingAnchor.constraint(equalTo: guide.leadingAnchor),
+            surfaceArea.trailingAnchor.constraint(equalTo: guide.trailingAnchor),
+            surfaceArea.bottomAnchor.constraint(equalTo: guide.bottomAnchor),
+
+            lampStrip.leadingAnchor.constraint(equalTo: guide.leadingAnchor, constant: 16),
+            lampStrip.centerYAnchor.constraint(equalTo: topButtonRow.centerYAnchor),
+            lampStrip.trailingAnchor.constraint(lessThanOrEqualTo: topButtonRow.leadingAnchor, constant: -12),
+
+            driveBay.leadingAnchor.constraint(equalTo: guide.leadingAnchor, constant: 12),
+            driveBay.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -12),
+            driveBay.topAnchor.constraint(equalTo: topButtonRow.bottomAnchor, constant: 8),
+            driveBay.heightAnchor.constraint(equalToConstant: DriveBayView.preferredHeight),
+
+            innerPanelPicker.widthAnchor.constraint(equalToConstant: 132),
+            innerPanelPicker.heightAnchor.constraint(equalToConstant: 32),
 
             inputModeButton.widthAnchor.constraint(equalToConstant: 44),
             inputModeButton.heightAnchor.constraint(equalToConstant: 44),
@@ -716,20 +801,35 @@ final class GameViewController: UIViewController {
     }
 
     private func applyInputMode() {
-        fullKeyboard.isHidden = !showsFullKeyboard
-        inputModeButton.isHidden = showsFullKeyboard
-        if showsFullKeyboard {
-            // Keyboard layout: the screen stays a touch mouse; pad and trackpad are hidden.
-            virtualPad.releaseAll()
-            virtualPad.isHidden = true
-            trackpad.isHidden = true
-            padOutputButton.isHidden = true
-            touchMouse?.isEnabled = true
-            return
+        // Upright inner display: the picker chooses the lower part. Elsewhere the
+        // round button switches between the pad and the (touch) mouse.
+        let surface: InnerPanel
+        if isUprightInnerDisplay {
+            surface = innerPanel
+        } else {
+            surface = inputMode == .pad ? .pad : .trackpad
         }
-        fullKeyboard.releaseAll()
+        innerPanelPicker.isHidden = !isUprightInnerDisplay
+        innerPanelPicker.selection = innerPanel
+        inputModeButton.isHidden = isUprightInnerDisplay
 
-        let isPad = (inputMode == .pad)
+        // The lamps sit at the top edge of the "keyboard"; the book posture has the drive bay instead.
+        lampStrip.isHidden = !isUprightInnerDisplay
+        lampStrip.showsKeyboardLEDs = surface == .keyboard
+        driveBay.isHidden = !isBookPosture
+        // Deactivate before activating so the two never conflict.
+        let surfaceTop = isBookPosture ? surfaceTopToDriveBay : surfaceTopToButtons
+        let unusedSurfaceTop = isBookPosture ? surfaceTopToButtons : surfaceTopToDriveBay
+        unusedSurfaceTop?.isActive = false
+        surfaceTop?.isActive = true
+
+        fullKeyboard.isHidden = surface != .keyboard
+        if surface != .keyboard {
+            fullKeyboard.releaseAll()
+        }
+
+        // The screen stays a touch mouse unless the pad is shown.
+        let isPad = surface == .pad
         touchMouse?.isEnabled = !isPad
         virtualPad.isHidden = !isPad
         padOutputButton.isHidden = !isPad
@@ -737,8 +837,9 @@ final class GameViewController: UIViewController {
         if !isPad {
             virtualPad.releaseAll()
         }
-        // The trackpad panel only appears on its own side of the fold.
-        trackpad.isHidden = isPad || !isSplit
+        // The trackpad needs room of its own: its side of the fold, or below the screen.
+        let hasTrackpadRoom = isSplit || (isUprightInnerDisplay && stacksControlsBelowScreen)
+        trackpad.isHidden = surface != .trackpad || !hasTrackpadRoom
         // ボタンには「切り替え先」を表示する
         let symbol = isPad ? "cursorarrow" : "gamecontroller"
         inputModeButton.setImage(UIImage(systemName: symbol), for: .normal)

@@ -93,6 +93,7 @@ SC-55 は `sc55_rom1.bin` `sc55_rom2.bin` `sc55_waverom1.bin` `sc55_waverom2.bin
 | `X68000 iOS/TouchMouseController.swift` | トラックパッド風マウス |
 | `X68000 iOS/VirtualPadView.swift` | 仮想パッド（JOY/KEY） |
 | `X68000 iOS/X68KeyboardView.swift` | X68000 フルキーボード |
+| `X68000 iOS/DuoPanels.swift` | iPhone Duo の姿勢別パネル（ランプ列、ドライブベイ、下半分の切り替え） |
 | `X68000 iOS/DiskLibraryViewController.swift` | ディスク一覧シート |
 | `X68000 iOS/iOSKeyMap.swift` | ハードウェアキーボードの変換 |
 | `X68000 iOS/SceneDelegate.swift`, `AppDelegate.swift`, `Info.plist` | UIScene ライフサイクル・設定 |

@@ -177,3 +177,26 @@ iPhoneOS 27.0 SDK（arm64, `-DHAVE_C68K -DTARGET_IOS`）で `clang -fsyntax-only
 - SpriteKit のデバッグ表示（FPS・ノード数）を削除。
 - 残り候補: 余白のアートワーク（HIG）、`UIHingeInteraction` の演出、バンドル ID 確定と TestFlight 準備、
   `ios/phase2-boot` を `master` へ統合。
+
+### iPhone Duo の姿勢別レイアウト（2026-10-26、ブランチ `ios/duo-posture`）
+
+- 姿勢の判定は `GameViewController.updateLayoutState` で、arrangement が置いたペインの位置から行う。
+  - 上下に分かれた半開き（L 字・ノート PC 持ち）: 画面が上、操作パネルが下
+  - 左右に分かれた半開き（本の持ち方）: `isBookPosture`
+  - 内側ディスプレイの縦向き（L 字、または全開の縦）: `isUprightInnerDisplay`
+- 内側ディスプレイが縦のときは、下半分の中身を上段の切り替え（`InnerPanelPicker`）でキーボード／仮想パッド／トラックパッドから選べる。
+  選んだものは `ios_inner_panel` に保存する。以前はキーボード固定で、L 字ではパッドを使えなかった。
+- キーボードの上の端にランプ列（`StatusLampStripView`）を出す: FDD0・FDD1 のアクセス（ディスクが入っていると薄く点灯）、
+  HD BUSY、キーボード LED（かな・ローマ字・コード入力・CAPS・INS・ひらがな・全角）。
+- 本の持ち方では、操作パネル側の上にドライブベイ（`DriveBayView`）を出す。FDD0・FDD1・HDD の各スロットに、
+  アクセスランプ、ディスク名、取り出しボタンがあり、スロットをタップするとディスクメニューの該当部分が開く。
+- 姿勢が変わったときは、操作パネルをクロスフェードで切り替える。
+- コアに追加したもの（macOS の動作は変わらない）:
+  - `FDD_ActivityCount[]`（fdd.c、シーク・読み書きのたびに加算）
+  - `HDD_ActivityCount`（sasi.c、SASI の読み書きと SCSI のイメージ参照で加算）
+  - `MFP_KeyboardLEDs`（mfp.c、UDR へ書かれた $80〜$FF の LED コマンド。ビット 0 が点灯）
+  - 取得は `X68000_GetFDDActivity` / `X68000_GetHDDActivity` / `X68000_GetKeyboardLEDs`。
+    UI 側は `StatusLampMonitor` が 30 Hz で読み、アクセスの後 0.12 秒ランプを点ける。
+- 実機・シミュレータで確認が要るもの: L 字でのランプ列と切り替えの幅（626 pt 前後で収まる想定）、本の持ち方での
+  ドライブベイの高さ、キーボード LED のビットの向き（Human68k で CAPS やかなを押して確認）。
+

@@ -1162,6 +1162,8 @@ static DWORD SCSIU_GetBlockSize(void) { return 512; }
 static BYTE*
 SCSI_ImgBuf(void)
 {
+	// Every SCSI image access goes through here: let the UI flash the HDD lamp.
+	HDD_ActivityCount++;
 #if MPX68K_HAVE_IOKIT_USB
 	if (X68000_GetStorageBusMode() == 2) {
 		return s_scsiu_boot_cache;

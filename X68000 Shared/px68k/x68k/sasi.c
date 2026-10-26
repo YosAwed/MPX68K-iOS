@@ -79,6 +79,9 @@ static int SASI_IsDriveReady(int index)
 	return (Config.HDImage[index][0] != '\0') ? 1 : 0;
 }
 
+// Bumped on every SASI/SCSI image transfer so the UI can flash the HDD lamp.
+volatile unsigned int HDD_ActivityCount = 0;
+
 FILEH Sasi_Open(const char* filename) {
 //	printf( "%s( \"%s\" )\n", __FUNCTION__, filename );
 	s_Sasi_pos = 0;
@@ -104,6 +107,7 @@ int Sasi_Read( HANDLE fp, void* buf, int size ) {
 	pos += s_Sasi_pos;
 	memcpy( buf, pos, size );
 	s_Sasi_pos += size;
+	HDD_ActivityCount++;
 
 	return size;
 }
@@ -123,6 +127,7 @@ int Sasi_Write( HANDLE fp, void* buf, int size ) {
 	pos += s_Sasi_pos;
 	memcpy( pos, buf, size );
 	s_Sasi_pos += size;
+	HDD_ActivityCount++;
 
 	return size;
 }

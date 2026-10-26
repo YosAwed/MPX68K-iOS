@@ -39,6 +39,7 @@ IOS_SOURCES = [
     f"{IOS_DIR}/VirtualPadView.swift",
     f"{IOS_DIR}/ScreenLayout.swift",
     f"{IOS_DIR}/X68KeyboardView.swift",
+    f"{IOS_DIR}/DuoPanels.swift",
     f"{IOS_DIR}/DiskLibraryViewController.swift",
 ]
 IOS_RESOURCES = [

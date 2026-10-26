@@ -67,6 +67,9 @@ void X68000_SetFDDWriteProtect(const long drive, const int protect);
 const int X68000_IsGuestPoweredOff(void);
 void X68000_SetSpeed(const double ratio);
 const char* X68000_GetFDDFilename( const long drive );
+const unsigned int X68000_GetFDDActivity(const long drive);
+const unsigned int X68000_GetHDDActivity(void);
+const unsigned char X68000_GetKeyboardLEDs(void);
 
 void X68000_EjectHDD();
 const int X68000_IsHDDReady();

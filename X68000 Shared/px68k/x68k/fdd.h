@@ -41,6 +41,8 @@ void FDD_SetEMask(int drive, int emask);
 void FDD_SetAccess(int drive);
 void FDD_SetBlink(int drive, int blink);
 
+extern volatile unsigned int FDD_ActivityCount[4];
+
 #endif
 
 
