@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-MPX68K is a Sharp X68000 computer emulator for macOS, based on the px68k emulator core. The project bridges low-level C emulation code with modern Swift UI frameworks using SpriteKit. This is a document-based application with deep integration into Apple's ecosystem. (An earlier iOS target was removed in August 2025; the only build target today is macOS.)
+MPX68K is a Sharp X68000 computer emulator based on the px68k emulator core. The project bridges low-level C emulation code with modern Swift UI frameworks using SpriteKit.
+
+**This repository (MPX68K-iOS) is the iOS / iPadOS / iPhone Duo port.** It carries the macOS app from upstream (YosAwed/MPX68K) plus the iOS app in `X68000 iOS/`, built from the generated `MPX68K iOS.xcodeproj` (scheme `MPX68K iOS`). Before working on the iOS side, read `docs/IOS_HANDOFF.md` (setup on a new Mac, branch state, next steps, iPhone Duo simulator notes, ROM/disk files to carry over) and `docs/IOS_PORT_PLAN.md` (design history and what was verified). The macOS notes below still apply to the shared core and the macOS target.
 
 ## Build Commands
 
@@ -16,7 +18,10 @@ open X68000.xcodeproj
 # List available schemes and targets
 xcodebuild -list -project X68000.xcodeproj
 
-# Build macOS version (the only target)
+# Build the iOS app (iPhone Duo needs Xcode 27.1 and the iOS 27.1 simulator runtime; see docs/IOS_HANDOFF.md)
+xcodebuild -project "MPX68K iOS.xcodeproj" -scheme "MPX68K iOS" -configuration Debug -destination 'generic/platform=iOS Simulator' build
+
+# Build macOS version
 xcodebuild -project X68000.xcodeproj -scheme "X68000 macOS" -configuration Debug
 xcodebuild -project X68000.xcodeproj -scheme "X68000 macOS" -configuration Release
 
