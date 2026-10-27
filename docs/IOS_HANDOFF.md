@@ -16,7 +16,9 @@ python3 tools/generate_ios_project.py                           # iOS プロジ�
 open "MPX68K iOS.xcodeproj"
 ```
 
-- **Xcode**: 通常ビルドは Xcode 27.0 以降。iPhone Duo（全画面表示・`UIArrangementViewController`・`UIHingeInteraction`）の確認には
+- **Xcode**: ビルドは Xcode 27.1 だけを使う（iOS 27.0 SDK は使わない。27.0 でもビルドは通るが、iPhone Duo の
+  `UIArrangementViewController`・`UIHingeInteraction` のコードが `#if canImport` で丸ごと外れ、半開きでも全画面のままになる。
+  アプリの `Info.plist` の `DTSDKName` が `iphonesimulator27.1` か確かめられる）。iPhone Duo（全画面表示・`UIArrangementViewController`・`UIHingeInteraction`）の確認には
   **Xcode 27.1** と **iOS 27.1 シミュレータランタイム** が必要。現在の Mac では `/Applications/Xcode.app` が 27.1（27A9275）なので、
   コマンドラインでは `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` を付ける。ランタイムがなければ
   `xcodebuild -downloadPlatform iOS -buildVersion 27.1`（約 7.9 GB）で入れ、
@@ -108,6 +110,11 @@ SC-55 は `sc55_rom1.bin` `sc55_rom2.bin` `sc55_waverom1.bin` `sc55_waverom2.bin
   - ランプの点灯のような短い変化は、`xcrun simctl io <UDID> recordVideo --display=<UUID>` で録画して確かめる
     （`simctl io screenshot` の連写では間に合わない）。
   - Xcode 27.1 の `simctl` を使うと、シミュレータのサービスが 27.1 版に置き換わり、起動中の他のシミュレータは止まる。
+  - Xcode 27.0 のツール（`xcode-select` が 27.0 を指しているときの `simctl`、27.0 の Device Hub）が動いている間に起動した
+    iPhone Duo は、ヒンジの角度は届くのに折り目の領域（`reservedRegions(kind: .division)`）が空のままで、姿勢ボタンで
+    半開きにしても全画面になる。27.1 の `simctl` で `shutdown` → `boot` し直すと直る（2026-10-27）。
+  - 姿勢を変えた後、`simctl io screenshot` は古い画面を返し続けることがある。Claude Code の iOS シミュレータ操作ツールの
+    スクリーンショットは正しかった。
 - **閉じた状態での上下逆さの縦向き**は iOS がアプリを回さない（OS の仕様とみて現状維持）。
 - 旧リポジトリ `X68iOS-master` の `CGROM_DAT.c` / `IPLROM_DAT.c` には ROM ダンプが入っているので公開しないこと（MPX68K-iOS では空の定義になっている）。
 

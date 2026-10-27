@@ -18,8 +18,10 @@ open X68000.xcodeproj
 # List available schemes and targets
 xcodebuild -list -project X68000.xcodeproj
 
-# Build the iOS app (iPhone Duo needs Xcode 27.1 and the iOS 27.1 simulator runtime; see docs/IOS_HANDOFF.md)
-xcodebuild -project "MPX68K iOS.xcodeproj" -scheme "MPX68K iOS" -configuration Debug -destination 'generic/platform=iOS Simulator' build
+# Build the iOS app with Xcode 27.1 only (never the iOS 27.0 SDK: it silently drops the iPhone Duo
+# arrangement / hinge code behind `#if canImport(UIKit.UIArrangementViewController)`). xcode-select may
+# still point at an old Xcode, so always set DEVELOPER_DIR; see docs/IOS_HANDOFF.md
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project "MPX68K iOS.xcodeproj" -scheme "MPX68K iOS" -configuration Debug -destination 'generic/platform=iOS Simulator' build
 
 # Build macOS version
 xcodebuild -project X68000.xcodeproj -scheme "X68000 macOS" -configuration Debug
