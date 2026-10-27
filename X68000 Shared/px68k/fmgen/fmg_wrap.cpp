@@ -26,7 +26,16 @@ public:
 	virtual ~MyOPM() {}
 	void WriteIO(DWORD adr, BYTE data);
 	void Count2(DWORD clock);
+	void ResetMonitor();
+
+	// Copy of the registers for the sound monitor panel (fmgen keeps no readable copy).
+	BYTE MonitorRegs[256];
+	// Slots keyed on per channel (bit 0 M1, 1 C1, 2 M2, 3 C2), from register $08.
+	BYTE MonitorSlots[8];
+	// Counts key-ons per channel, so a note shorter than one UI frame still shows.
+	unsigned int MonitorKeyOns[8];
 private:
+	void MonitorWrite(int reg, BYTE data);
 	virtual void Intr(bool);
 	int CurReg;
 	DWORD CurCount;
@@ -36,6 +45,26 @@ private:
 MyOPM::MyOPM()
 {
 	CurReg = 0;
+	ResetMonitor();
+}
+
+void MyOPM::ResetMonitor()
+{
+	memset(MonitorRegs, 0, sizeof(MonitorRegs));
+	memset(MonitorSlots, 0, sizeof(MonitorSlots));
+	memset(MonitorKeyOns, 0, sizeof(MonitorKeyOns));
+}
+
+void MyOPM::MonitorWrite(int reg, BYTE data)
+{
+	MonitorRegs[reg&0xff] = data;
+	if ( reg==0x08 ) {
+		// Key on/off: the register only holds the last write, so keep each channel's slots.
+		int ch = data&7;
+		BYTE slots = (data>>3)&0x0f;
+		if ( slots && !MonitorSlots[ch] ) MonitorKeyOns[ch]++;
+		MonitorSlots[ch] = slots;
+	}
 }
 
 #define FM_MIDI_OUT (0)
@@ -72,6 +101,7 @@ void MyOPM::WriteIO(DWORD adr, BYTE data)
 			::FDC_SetForceReady((data>>6)&1);
 		}
 		SetReg((int)CurReg, (int)data);
+		MonitorWrite(CurReg, data);
 #if FM_MIDI_OUT
         if ( CurReg >= 0x08 ) {
             int ch = data & 0x07;
@@ -178,7 +208,10 @@ void OPM_SetRate(int clock, int rate)
 
 void OPM_Reset(void)
 {
-	if ( opm ) opm->Reset();
+	if ( opm ) {
+		opm->Reset();
+		opm->ResetMonitor();
+	}
 }
 
 
@@ -215,4 +248,32 @@ void OPM_SetVolume(BYTE vol)
 {
 	int v = (vol)?((16-vol)*4):192;		// このくらいかなぁ
 	if ( opm ) opm->SetVolume(-v);
+}
+
+
+// -----------------------------------------------------------------------
+//   Sound monitor (read from the UI on the emulation thread)
+// -----------------------------------------------------------------------
+extern "C" void X68000_GetOPMMonitor(unsigned char *regs, unsigned char *slots, unsigned int *keyOns)
+{
+	if ( !opm ) {
+		if ( regs ) memset(regs, 0, 256);
+		if ( slots ) memset(slots, 0, 8);
+		if ( keyOns ) memset(keyOns, 0, sizeof(unsigned int)*8);
+		return;
+	}
+	if ( regs ) memcpy(regs, opm->MonitorRegs, 256);
+	if ( slots ) memcpy(slots, opm->MonitorSlots, 8);
+	if ( keyOns ) memcpy(keyOns, opm->MonitorKeyOns, sizeof(unsigned int)*8);
+}
+
+extern "C" int X68000_GetADPCMMonitor(int *pan, int *output, unsigned int *sampleRate)
+{
+	ADPCMMonitorState state;
+	ADPCM_GetMonitorState(&state);
+	if ( pan ) *pan = state.pan;
+	if ( output ) *output = state.output;
+	// ADPCM_Clocks are 12 times the sample rate (8 MHz / 512 -> 187500).
+	if ( sampleRate ) *sampleRate = (unsigned int)(state.clockRate/12);
+	return state.playing;
 }

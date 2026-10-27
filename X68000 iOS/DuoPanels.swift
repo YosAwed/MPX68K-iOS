@@ -10,7 +10,8 @@
 //  - DriveBayView is the "front panel" with both floppy drives and the hard disk,
 //    shown on its own side of the fold in the book posture. Below the drives it shows
 //    the LCD of the internal sound module (SC-55 or MT-32) that MIDI goes to.
-//  - InnerPanelPicker chooses what the lower half shows: keyboard, pad or trackpad.
+//  - InnerPanelPicker chooses what the lower half shows: keyboard, pad, trackpad or the
+//    sound monitor (SoundMonitorView.swift).
 //
 
 import UIKit
@@ -937,7 +938,7 @@ final class ThrottleHUDView: UIView {
 /// What the lower half shows when the inner display is upright (L-shaped / laptop
 /// posture, or fully open in portrait).
 enum InnerPanel: Int, CaseIterable {
-    case keyboard, pad, trackpad
+    case keyboard, pad, trackpad, sound
 
     static let defaultsKey = "ios_inner_panel"
 
@@ -954,6 +955,7 @@ enum InnerPanel: Int, CaseIterable {
         case .keyboard: return "keyboard"
         case .pad: return "gamecontroller"
         case .trackpad: return "cursorarrow"
+        case .sound: return "waveform"
         }
     }
 
@@ -962,6 +964,7 @@ enum InnerPanel: Int, CaseIterable {
         case .keyboard: return "キーボード"
         case .pad: return "仮想パッド"
         case .trackpad: return "トラックパッド"
+        case .sound: return "サウンドモニター"
         }
     }
 }

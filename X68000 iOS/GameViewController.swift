@@ -37,9 +37,10 @@ final class GameViewController: UIViewController {
     private let virtualPad = VirtualPadView()
     private let inputModeButton = UIButton(type: .system)
     private let trackpad = TrackpadSurfaceView()
+    private let soundMonitor = SoundMonitorView()
     private let fullKeyboard = X68KeyboardView()
     /// Inner display (fully open or partially folded) held upright. The lower part then
-    /// shows the keyboard, the pad or the trackpad, as chosen with `innerPanelPicker`.
+    /// shows the keyboard, the pad, the trackpad or the sound monitor, as chosen with `innerPanelPicker`.
     private var isUprightInnerDisplay = false {
         didSet { if isUprightInnerDisplay != oldValue { applyInputMode() } }
     }
@@ -509,6 +510,10 @@ final class GameViewController: UIViewController {
         }
         panel.addSubview(fullKeyboard)
 
+        soundMonitor.translatesAutoresizingMaskIntoConstraints = false
+        soundMonitor.isHidden = true
+        panel.addSubview(soundMonitor)
+
         inputModeButton.translatesAutoresizingMaskIntoConstraints = false
         inputModeButton.tintColor = UIColor.white.withAlphaComponent(0.8)
         inputModeButton.backgroundColor = UIColor.white.withAlphaComponent(0.12)
@@ -593,6 +598,11 @@ final class GameViewController: UIViewController {
             trackpad.topAnchor.constraint(equalTo: surfaceArea.topAnchor, constant: 12),
             trackpad.bottomAnchor.constraint(equalTo: guide.bottomAnchor, constant: -16),
 
+            soundMonitor.leadingAnchor.constraint(equalTo: guide.leadingAnchor, constant: 8),
+            soundMonitor.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -8),
+            soundMonitor.topAnchor.constraint(equalTo: surfaceArea.topAnchor, constant: 6),
+            soundMonitor.bottomAnchor.constraint(equalTo: guide.bottomAnchor, constant: -8),
+
             topButtonRow.topAnchor.constraint(equalTo: guide.topAnchor, constant: 8),
             topButtonRow.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -12),
             topButtonRow.heightAnchor.constraint(equalToConstant: 44),
@@ -609,7 +619,7 @@ final class GameViewController: UIViewController {
             driveBay.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -12),
             driveBay.topAnchor.constraint(equalTo: topButtonRow.bottomAnchor, constant: 8),
 
-            innerPanelPicker.widthAnchor.constraint(equalToConstant: 132),
+            innerPanelPicker.widthAnchor.constraint(equalToConstant: 176),
             innerPanelPicker.heightAnchor.constraint(equalToConstant: 32),
 
             inputModeButton.widthAnchor.constraint(equalToConstant: 44),
@@ -983,6 +993,7 @@ final class GameViewController: UIViewController {
         // The trackpad needs room of its own: its side of the fold, or below the screen.
         let hasTrackpadRoom = isSplit || (isUprightInnerDisplay && stacksControlsBelowScreen)
         trackpad.isHidden = surface != .trackpad || !hasTrackpadRoom
+        soundMonitor.isHidden = surface != .sound
         // ボタンには「切り替え先」を表示する
         let symbol = isPad ? "cursorarrow" : "gamecontroller"
         inputModeButton.setImage(UIImage(systemName: symbol), for: .normal)

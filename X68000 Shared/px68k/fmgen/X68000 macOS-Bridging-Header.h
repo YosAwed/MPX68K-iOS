@@ -74,6 +74,10 @@ const char* X68000_GetFDDFilename( const long drive );
 const unsigned int X68000_GetFDDActivity(const long drive);
 const unsigned int X68000_GetHDDActivity(void);
 const unsigned char X68000_GetKeyboardLEDs(void);
+// Sound monitor: OPM registers as last written, keyed-on slots and key-on counts per
+// channel, and the ADPCM state (returns 1 while playing).
+void X68000_GetOPMMonitor(unsigned char *regs, unsigned char *slots, unsigned int *keyOns);
+int X68000_GetADPCMMonitor(int *pan, int *output, unsigned int *sampleRate);
 
 void X68000_EjectHDD();
 const int X68000_IsHDDReady();

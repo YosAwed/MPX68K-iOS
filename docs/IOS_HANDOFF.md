@@ -121,6 +121,7 @@ SC-55 は `sc55_rom1.bin` `sc55_rom2.bin` `sc55_waverom1.bin` `sc55_waverom2.bin
 | `X68000 iOS/VirtualPadView.swift` | 仮想パッド（JOY/KEY） |
 | `X68000 iOS/X68KeyboardView.swift` | X68000 フルキーボード |
 | `X68000 iOS/DuoPanels.swift` | iPhone Duo の姿勢別パネル（ランプ列、ドライブベイ、下半分の切り替え） |
+| `X68000 iOS/SoundMonitorView.swift` | 下半分のサウンドモニター（OPM 8ch と ADPCM、MMDSP 風） |
 | `X68000 iOS/DiskLibraryViewController.swift` | ディスク一覧シート |
 | `X68000 iOS/iOSKeyMap.swift` | ハードウェアキーボードの変換 |
 | `X68000 iOS/SceneDelegate.swift`, `AppDelegate.swift`, `Info.plist` | UIScene ライフサイクル・設定 |
@@ -136,7 +137,7 @@ SC-55 は `sc55_rom1.bin` `sc55_rom2.bin` `sc55_waverom1.bin` `sc55_waverom2.bin
 | ROM | `~/Documents/X68IPLCG/` の `IPLROM.DAT` `CGROM.DAT`（macOS 版の SCSI 用に `SCSIEXROM.DAT`、ほか `IPLROMCO.DAT` `SCSIINROM*.DAT`）。`~/Documents/MPX68K/` にも `IPLROM.DAT` `CGROM.DAT` `SRAM.DAT` |
 | 起動ディスク | `~/Downloads/Human302mod.XDF`（Human68k 3.02） |
 | SCSI HDD | `~/Documents/X68IPLCG/900MHDD.HDS`（起動できる方、約 900 MB）。`~/Downloads/900MSCSIHDD.HDS` は壊れているので持っていかなくてよい |
-| SASI HDD | `~/Downloads/HDD-MDX.HDF`（約 40 MB、MXDRV・MusTool 入り） |
+| SASI HDD | `~/Downloads/HDD-MDX.HDF`（約 40 MB、MXDRV・MusTool 入り。MXDRV にはメモリ 12 MB の `SRAM.DAT` が要る（下記）） |
 | テスト用 | `~/Documents/crtmodetest.xdf`（`tools/crt-mode-test/` からも作れる） |
 | SC-55 | `~/Downloads/Roland SC-55 v1.21/sc55_*.bin`（5 本） |
 
@@ -146,3 +147,7 @@ Mac mini 側では次の順に用意する:
 2. Xcode 27.1 と iOS 27.1 シミュレータランタイムを入れ、iPhone Duo シミュレータを作る（1 章の「Xcode」）。
 3. `MPX68K iOS` スキームをビルドしてシミュレータに入れ、上の ROM・ディスクを `Documents/MPX68K` にコピーする（1 章の「ROM・ディスク」）。
 4. 動作の確かめ方は 4 章の「iPhone Duo シミュレータの癖」と `IOS_PORT_PLAN.md` の「iPhone Duo の姿勢別レイアウト」の動作確認を参照。
+
+`SRAM.DAT` のメモリ容量は、実機と同じく SWITCH.X で書き換えるまで 1 MB で、その状態では `HDD-MDX.HDF` の MXDRV が
+「メモリが不足しています」で常駐しない。アプリを止めてから `SRAM.DAT` の $08〜$0B（バイトスワップで `C0 00 00 00`）を
+書き換えて 12 MB にしておく。
