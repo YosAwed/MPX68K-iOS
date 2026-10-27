@@ -78,6 +78,8 @@ const unsigned char X68000_GetKeyboardLEDs(void);
 // channel, and the ADPCM state (returns 1 while playing).
 void X68000_GetOPMMonitor(unsigned char *regs, unsigned char *slots, unsigned int *keyOns);
 int X68000_GetADPCMMonitor(int *pan, int *output, unsigned int *sampleRate);
+// Bytes of MIDI channel messages sent so far (only increases).
+const unsigned int X68000_GetMIDIActivity(void);
 
 void X68000_EjectHDD();
 const int X68000_IsHDDReady();

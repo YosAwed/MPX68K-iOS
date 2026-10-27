@@ -9,7 +9,8 @@
 //    (portrait inner display: L-shaped / laptop posture, or fully open).
 //  - DriveBayView is the "front panel" with both floppy drives and the hard disk,
 //    shown on its own side of the fold in the book posture. Below the drives it shows
-//    the LCD of the internal sound module (SC-55 or MT-32) that MIDI goes to.
+//    the LCD of the internal sound module (SC-55 or MT-32) while the game sends MIDI,
+//    and a small OPM monitor (SoundMonitorView) otherwise.
 //  - InnerPanelPicker chooses what the lower half shows: keyboard, pad, trackpad or the
 //    sound monitor (SoundMonitorView.swift).
 //
@@ -317,7 +318,13 @@ final class DriveBayView: UIView {
     private var slots: [DriveSlotView] = []
     private let sc55Panel = ModulePanelView(kind: .sc55)
     private let mt32Panel = ModulePanelView(kind: .mt32)
+    /// Shown instead of the module LCD while no MIDI comes (FM-only games, external MIDI).
+    private let opmMonitor = SoundMonitorView(compact: true)
     private var displayLink: CADisplayLink?
+    /// The module LCD stays up this long after the last MIDI channel message.
+    private static let midiHold: CFTimeInterval = 10
+    private var lastMIDIActivity = X68000_GetMIDIActivity()
+    private var midiSeenUntil: CFTimeInterval = 0
 
     /// Height of the three drive slots; the module panel adds its own height below them.
     private static let slotsHeight: CGFloat = 3 * 46 + 2 * 8
@@ -346,6 +353,7 @@ final class DriveBayView: UIView {
             panel.menuProvider = { [weak self] in self?.moduleMenuProvider?() ?? [] }
             bay.addArrangedSubview(panel)
         }
+        bay.addArrangedSubview(opmMonitor)
         for drive in [Drive.floppy(0), .floppy(1), .hardDisk] {
             let slot = DriveSlotView(drive: drive)
             slot.menuProvider = { [weak self] in self?.menuProvider?(drive) ?? [] }
@@ -383,7 +391,8 @@ final class DriveBayView: UIView {
         }
     }
 
-    /// Shows the panel of the active module and copies its LCD from the core.
+    /// Shows the panel of the active module while MIDI comes (and copies its LCD from the
+    /// core), or the OPM monitor.
     @objc private func updateModulePanel() {
         // Nothing to do while the bay is not on screen (any posture but the book).
         var view: UIView? = self
@@ -392,9 +401,16 @@ final class DriveBayView: UIView {
             view = current.superview
         }
         guard window != nil else { return }
-        let kind = activeModuleProvider?()
+        let now = CACurrentMediaTime()
+        let midiActivity = X68000_GetMIDIActivity()
+        if midiActivity != lastMIDIActivity {
+            lastMIDIActivity = midiActivity
+            midiSeenUntil = now + Self.midiHold
+        }
+        let kind = now < midiSeenUntil ? activeModuleProvider?() : nil
         sc55Panel.setHiddenInStackView(kind != .sc55)
         mt32Panel.setHiddenInStackView(kind != .mt32)
+        opmMonitor.setHiddenInStackView(kind != nil)
         switch kind {
         case .sc55: sc55Panel.updateFromCore()
         case .mt32: mt32Panel.updateFromCore()

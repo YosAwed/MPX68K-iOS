@@ -82,8 +82,14 @@ final class SoundMonitorView: UIView {
     private static let noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
     private static let lfoWaveNames = ["SAW", "SQR", "TRI", "NOI"]
 
-    override init(frame: CGRect) {
-        super.init(frame: frame)
+    /// Small version for the drive bay (book posture): shorter rows, no algorithm column.
+    let isCompact: Bool
+    /// Height the compact version asks for.
+    static let compactHeight: CGFloat = 150
+
+    init(compact: Bool = false) {
+        isCompact = compact
+        super.init(frame: .zero)
         backgroundColor = Palette.background
         layer.cornerRadius = 8
         layer.borderWidth = 1
@@ -97,6 +103,10 @@ final class SoundMonitorView: UIView {
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    override var intrinsicContentSize: CGSize {
+        CGSize(width: UIView.noIntrinsicMetric, height: isCompact ? Self.compactHeight : UIView.noIntrinsicMetric)
     }
 
     override var isHidden: Bool {
@@ -125,6 +135,12 @@ final class SoundMonitorView: UIView {
     // MARK: - State
 
     @objc private func step(_ link: CADisplayLink) {
+        // A hidden ancestor (e.g. the drive bay outside the book posture) keeps this off screen.
+        var ancestor = superview
+        while let current = ancestor {
+            if current.isHidden { return }
+            ancestor = current.superview
+        }
         let now = link.timestamp
         let dt = lastStep == 0 ? 1.0 / 60 : min(0.1, now - lastStep)
         lastStep = now
@@ -141,6 +157,10 @@ final class SoundMonitorView: UIView {
         let noiseEnabled = regs[0x0f] & 0x80 != 0
 
         for ch in 0..<8 {
+            // The core clears its key-on counts on reset; start the channel over.
+            if keyOns[ch] < channels[ch].keyOnCount {
+                channels[ch] = FMChannel()
+            }
             var c = channels[ch]
             let control = regs[0x20 + ch]
             c.right = control & 0x80 != 0
@@ -260,10 +280,10 @@ final class SoundMonitorView: UIView {
     override func draw(_ rect: CGRect) {
         guard let context = UIGraphicsGetCurrentContext() else { return }
         let inset = bounds.insetBy(dx: 8, dy: 6)
-        let headerHeight: CGFloat = 18
+        let headerHeight: CGFloat = isCompact ? 14 : 18
         let rowCount: CGFloat = 9
         let rowHeight = min(34, (inset.height - headerHeight - 4) / rowCount)
-        let compact = inset.width < 330
+        let compact = isCompact || inset.width < 330
 
         drawHeader(in: CGRect(x: inset.minX, y: inset.minY, width: inset.width, height: headerHeight))
 
@@ -278,10 +298,10 @@ final class SoundMonitorView: UIView {
     }
 
     private func columns(for row: CGRect, compact: Bool) -> Columns {
-        let labelWidth: CGFloat = 30
-        let noteWidth: CGFloat = 34
-        let meterWidth: CGFloat = compact ? 52 : 72
-        let panWidth: CGFloat = 22
+        let labelWidth: CGFloat = isCompact ? 26 : 30
+        let noteWidth: CGFloat = isCompact ? 28 : 34
+        let meterWidth: CGFloat = isCompact ? 44 : (compact ? 52 : 72)
+        let panWidth: CGFloat = isCompact ? 18 : 22
         let algorithmWidth: CGFloat = compact ? 0 : 30
         let gap: CGFloat = 6
         var x = row.minX
@@ -300,18 +320,19 @@ final class SoundMonitorView: UIView {
     }
 
     private func drawHeader(in rect: CGRect) {
-        let font = UIFont.monospacedSystemFont(ofSize: 10, weight: .bold)
+        let size: CGFloat = isCompact ? 9 : 10
+        let font = UIFont.monospacedSystemFont(ofSize: size, weight: .bold)
         draw("YM2151 OPM", in: rect, font: font, color: Palette.label, alignment: .left)
         let lfo = "LFO \(String(format: "%3d", lfoFrequency)) \(Self.lfoWaveNames[lfoWave])"
         let pcm = pcmRate > 0 ? String(format: "  ADPCM %.1fkHz", Double(pcmRate) / 1000) : ""
-        draw(lfo + pcm, in: rect, font: UIFont.monospacedSystemFont(ofSize: 10, weight: .medium),
+        draw(lfo + pcm, in: rect, font: UIFont.monospacedSystemFont(ofSize: size, weight: .medium),
              color: Palette.dimLabel, alignment: .right)
     }
 
     private func drawFMRow(_ ch: Int, in row: CGRect, compact: Bool, context: CGContext) {
         let c = channels[ch]
         let cols = columns(for: row, compact: compact)
-        let font = UIFont.monospacedSystemFont(ofSize: min(12, row.height * 0.5), weight: .semibold)
+        let font = UIFont.monospacedSystemFont(ofSize: min(12, row.height * (isCompact ? 0.62 : 0.5)), weight: .semibold)
         let active = c.level > 0.02
 
         draw("FM\(ch + 1)", in: cols.label, font: font, color: active ? Palette.label : Palette.dimLabel, alignment: .left)
@@ -341,7 +362,7 @@ final class SoundMonitorView: UIView {
 
     private func drawPCMRow(in row: CGRect, compact: Bool, context: CGContext) {
         let cols = columns(for: row, compact: compact)
-        let font = UIFont.monospacedSystemFont(ofSize: min(12, row.height * 0.5), weight: .semibold)
+        let font = UIFont.monospacedSystemFont(ofSize: min(12, row.height * (isCompact ? 0.62 : 0.5)), weight: .semibold)
 
         context.setStrokeColor(Palette.grid.cgColor)
         context.setLineWidth(1)

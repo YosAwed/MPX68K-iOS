@@ -657,8 +657,17 @@ static BYTE s_midibuffer[MAX_MIDI_BUFFER_SIZE];
 // the FM/ADPCM audio generated at the same emulated moment.
 static double s_miditimes[MAX_MIDI_BUFFER_SIZE];
 static long s_midibuffersize = 0;
+// Counts the bytes of channel messages (note on/off, program change, ...) sent to the
+// sound module, for the UI to tell whether the game uses MIDI. Real-time bytes and
+// exclusives (e.g. the GS reset some drivers send at start) are not counted.
+static unsigned int s_midiActivity = 0;
+static BYTE s_midiStatus = 0;
 static void AddMIDIBufferAt( const BYTE data, double frame )
 {
+    if ( data<0xf8 ) {
+        if ( data&0x80 ) s_midiStatus = data;
+        if ( s_midiStatus>=0x80 && s_midiStatus<0xf0 ) s_midiActivity++;
+    }
     // Prevent overflow: drop when buffer is full to avoid asserts/crash
     if (s_midibuffersize >= MAX_MIDI_BUFFER_SIZE) {
         return; // graceful drop on overflow
@@ -689,6 +698,11 @@ static void AddDelayBuf(BYTE msg)
 	}
 }
 
+
+const unsigned int X68000_GetMIDIActivity(void)
+{
+    return s_midiActivity;
+}
 
 const long X68000_GetMIDIBufferSize(void)
 {
