@@ -63,6 +63,12 @@
 	<true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_mpx68k-rs232c._tcp</string>
+	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>RS-232C の対戦ケーブルで、近くの MPX68K と接続するために使います。</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
