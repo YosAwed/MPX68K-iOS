@@ -73,6 +73,7 @@ final class GameViewController: UIViewController {
     private var hingeDegrees: CGFloat?
     private var currentThrottle: UInt8 = 0x80
     private let throttleHUD = ThrottleHUDView()
+    private let linkNotice = LinkNoticeView()
     private var lastPadBits: UInt8 = 0
 
     // MARK: Layout
@@ -156,6 +157,7 @@ final class GameViewController: UIViewController {
         setUpTouchInput(on: skView)
         setUpHingeEffect()
         setUpThrottleHUD()
+        setUpLinkNotice()
         applyCyberStick()
 
         NotificationCenter.default.addObserver(
@@ -238,7 +240,105 @@ final class GameViewController: UIViewController {
         let presentations = pendingPresentations
         pendingPresentations.removeAll()
         presentations.forEach { $0() }
+
+        #if DEBUG && targetEnvironment(simulator)
+        runDebugLaunchOptions()
+        #endif
     }
+
+    #if DEBUG && targetEnvironment(simulator)
+    private var debugLaunchOptionsDone = false
+
+    /// Launch options for testing two simulators against each other (Debug builds in the simulator only):
+    ///   -debugBootDisk <file in Documents/MPX68K>   boot from this floppy, with the hard disk detached
+    ///   -debugBootDisk2 <file in Documents/MPX68K>  also put this floppy in drive 1
+    /// With either option, Documents/MPX68K/debug-input.txt is read and deleted whenever it appears, so a
+    /// script can drive the X68000 (touches sent to the simulator are unreliable). One command per line,
+    /// half a second apart, numbers in hex: "joy <bits> [ms]" (joystick 1, held 0.2 s or the given time), "scan <X68000 scancode>"
+    /// (key, held 0.15 s), "fdd0 <file>" / "fdd1 <file>" (put a floppy in that drive), "eject0" / "eject1", "cpu" (print the registers and the code at PC), "wait" (nothing).
+    ///   -debugRS232CLink YES                        plug in the RS-232C cross cable and log the port to stdout
+    private func runDebugLaunchOptions() {
+        guard !debugLaunchOptionsDone else { return }
+        debugLaunchOptionsDone = true
+        let defaults = UserDefaults.standard
+        if defaults.bool(forKey: "debugRS232CLink") {
+            startRS232CLink()
+            Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in
+                let port = RS232CLink.portSummary()
+                let tx = SCC_LinkGetInfo(Int32(SCC_LINK_INFO_TX_CHARS.rawValue))
+                let rx = SCC_LinkGetInfo(Int32(SCC_LINK_INFO_RX_CHARS.rawValue))
+                print("RS232C \(RS232CLink.shared.state) \(port.settings) \(port.lines) tx=\(tx) rx=\(rx)")
+            }
+        }
+        if defaults.bool(forKey: "debugRS232CLink") || defaults.string(forKey: "debugBootDisk") != nil,
+           let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+            let input = documents.appendingPathComponent("MPX68K").appendingPathComponent("debug-input.txt")
+            Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+                guard let script = try? String(contentsOf: input, encoding: .utf8) else { return }
+                try? FileManager.default.removeItem(at: input)
+                var delay = 0.0
+                for line in script.split(separator: "\n") {
+                    let words = line.split(separator: " ")
+                    let value = words.count > 1 ? UInt32(words[1], radix: 16) ?? 0 : 0
+                    let file = words.count > 1 ? input.deletingLastPathComponent().appendingPathComponent(String(words[1])) : input
+                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                        switch words.first {
+                        case "cpu":
+                            // Where the 68000 is: registers and the code at PC, to stdout.
+                            var cpu = X68000MonitorCPUState()
+                            X68000_Monitor_GetCPUState(&cpu)
+                            let code = (0..<12).map { String(format: "%04X", X68000_Monitor_ReadW(cpu.pc &+ UInt32($0 * 2))) }
+                            let d = withUnsafeBytes(of: cpu.d) { Array($0.bindMemory(to: UInt32.self)) }
+                            let a = withUnsafeBytes(of: cpu.a) { Array($0.bindMemory(to: UInt32.self)) }
+                            print(String(format: "CPU pc=%06X sr=%04X", cpu.pc, cpu.sr),
+                                  "d=" + d.map { String(format: "%08X", $0) }.joined(separator: ","),
+                                  "a=" + a.map { String(format: "%08X", $0) }.joined(separator: ","),
+                                  "code=" + code.joined(separator: " "))
+                        case "eject0":
+                            X68000_EjectFDD(0)
+                        case "eject1":
+                            X68000_EjectFDD(1)
+                        case "fdd0":
+                            _ = self?.gameScene?.loadFDDToDrive(url: file, drive: 0)
+                        case "fdd1":
+                            _ = self?.gameScene?.loadFDDToDrive(url: file, drive: 1)
+                        case "joy":
+                            X68000_Joystick_Set(0, UInt8(truncatingIfNeeded: value))
+                            // Optional second number: how long to hold, in milliseconds (hex). Menus that
+                            // auto-repeat need a short press to move one step.
+                            let hold = words.count > 2 ? Double(UInt32(words[2], radix: 16) ?? 200) / 1000 : 0.2
+                            DispatchQueue.main.asyncAfter(deadline: .now() + hold) { X68000_Joystick_Set(0, 0) }
+                        case "scan":
+                            X68000_Key_DownScancode(value)
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { X68000_Key_UpScancode(value) }
+                        default:
+                            break
+                        }
+                    }
+                    delay += 0.5
+                }
+            }
+        }
+        if let name = defaults.string(forKey: "debugBootDisk"),
+           let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+            let url = documents.appendingPathComponent("MPX68K").appendingPathComponent(name)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+                self?.gameScene?.ejectHDD()
+                _ = self?.gameScene?.loadFDDToDrive(url: url, drive: 0)
+                if let second = defaults.string(forKey: "debugBootDisk2") {
+                    _ = self?.gameScene?.loadFDDToDrive(url: url.deletingLastPathComponent().appendingPathComponent(second), drive: 1)
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self?.gameScene?.resetSystem()
+                    // The "choose a boot disk" prompt may have come up before the disk went in.
+                    if self?.presentedViewController is UIAlertController {
+                        self?.dismiss(animated: false)
+                    }
+                }
+            }
+        }
+    }
+    #endif
 
     // MARK: - Touch input
 
@@ -462,6 +562,80 @@ final class GameViewController: UIViewController {
         ])
     }
 
+    // MARK: - RS-232C cross cable
+
+    /// RS-232C: nothing plugged in, or a cross cable to another device running this app.
+    /// Not saved: like a real cable, it is plugged in for the session.
+    private func rs232cMenu() -> UIMenu {
+        let link = RS232CLink.shared
+        let unplugged = UIAction(title: "接続しない", image: UIImage(systemName: "xmark.circle"),
+                                 state: link.isEnabled ? .off : .on) { _ in
+            link.stop()
+        }
+        let cable = UIAction(title: "対戦ケーブル（クロス接続）",
+                             subtitle: "相手側も同じ設定にすると自動でつながります",
+                             image: UIImage(systemName: "cable.connector.horizontal"),
+                             state: link.isEnabled ? .on : .off) { [weak self] _ in
+            self?.startRS232CLink()
+        }
+        var children: [UIMenuElement] = [UIMenu(options: .displayInline, children: [unplugged, cable])]
+
+        var title = "RS-232C：未接続"
+        switch link.state {
+        case .off:
+            break
+        case .searching:
+            title = "RS-232C：相手を探しています…"
+        case .blocked:
+            title = "RS-232C：ローカルネットワークが未許可"
+            let settings = UIAction(title: "設定を開く", subtitle: "「ローカルネットワーク」をオンにしてください",
+                                    image: UIImage(systemName: "gear")) { _ in
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            children.append(settings)
+        case .connected(let peer):
+            title = "RS-232C：\(peer) と接続中"
+            let port = RS232CLink.portSummary()
+            let info = UIAction(title: port.settings, subtitle: port.lines,
+                                image: UIImage(systemName: port.mismatch ? "exclamationmark.triangle" : "waveform.path"),
+                                attributes: .disabled) { _ in }
+            children.append(UIMenu(options: .displayInline, children: [info]))
+        }
+        return UIMenu(title: title, image: UIImage(systemName: "cable.connector.horizontal"), children: children)
+    }
+
+    private func startRS232CLink() {
+        let link = RS232CLink.shared
+        link.onStateChange = { [weak self] state in
+            switch state {
+            case .connected(let peer):
+                self?.linkNotice.show("RS-232C：\(peer) と接続しました")
+            case .searching:
+                self?.linkNotice.show("RS-232C：接続が切れました。相手を探しています…")
+            case .blocked:
+                self?.linkNotice.show("RS-232C：設定でローカルネットワークを許可してください")
+            case .off:
+                break
+            }
+        }
+        guard !link.isEnabled else { return }
+        link.start()
+        linkNotice.show("RS-232C：相手を探しています…")
+    }
+
+    private func setUpLinkNotice() {
+        let screenView = screenController.view!
+        linkNotice.translatesAutoresizingMaskIntoConstraints = false
+        screenView.addSubview(linkNotice)
+        NSLayoutConstraint.activate([
+            linkNotice.topAnchor.constraint(equalTo: screenView.safeAreaLayoutGuide.topAnchor, constant: 12),
+            linkNotice.centerXAnchor.constraint(equalTo: screenView.centerXAnchor),
+            linkNotice.widthAnchor.constraint(lessThanOrEqualTo: screenView.widthAnchor, constant: -32),
+        ])
+    }
+
     /// Joystick port 1: an ordinary 2-button joystick, or a CYBER STICK in analog mode.
     private func joystickMenu() -> UIMenu {
         let standard = UIAction(title: "標準ジョイスティック", subtitle: "2 ボタン",
@@ -659,6 +833,7 @@ final class GameViewController: UIViewController {
         if let midi = midiMenu() { elements.append(midi) }
         if let speed = speedMenu() { elements.append(speed) }
         elements.append(joystickMenu())
+        elements.append(rs232cMenu())
         let reset = UIAction(title: "リセット", image: UIImage(systemName: "arrow.counterclockwise")) { [weak self] _ in
             self?.gameScene?.resetSystem()
         }

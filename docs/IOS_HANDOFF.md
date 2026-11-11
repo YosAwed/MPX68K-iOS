@@ -130,6 +130,7 @@ SC-55 は `sc55_rom1.bin` `sc55_rom2.bin` `sc55_waverom1.bin` `sc55_waverom2.bin
 | `X68000 iOS/DuoPanels.swift` | iPhone Duo の姿勢別パネル（ランプ列、ドライブベイ、下半分の切り替え） |
 | `X68000 iOS/SoundMonitorView.swift` | 下半分のサウンドモニター（OPM 8ch と ADPCM、MMDSP 風） |
 | `X68000 iOS/DiskLibraryViewController.swift` | ディスク一覧シート |
+| `X68000 iOS/RS232CLink.swift` | RS-232C の対戦ケーブル（2 台の相互接続。`IOS_PORT_PLAN.md` の「RS-232C の対戦ケーブル」） |
 | `X68000 iOS/iOSKeyMap.swift` | ハードウェアキーボードの変換 |
 | `X68000 iOS/SceneDelegate.swift`, `AppDelegate.swift`, `Info.plist` | UIScene ライフサイクル・設定 |
 | `tools/generate_ios_project.py` | iOS プロジェクト生成 |

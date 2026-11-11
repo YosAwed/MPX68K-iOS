@@ -42,6 +42,7 @@ IOS_SOURCES = [
     f"{IOS_DIR}/DuoPanels.swift",
     f"{IOS_DIR}/SoundMonitorView.swift",
     f"{IOS_DIR}/DiskLibraryViewController.swift",
+    f"{IOS_DIR}/RS232CLink.swift",
 ]
 IOS_RESOURCES = [
     f"{IOS_DIR}/Assets.xcassets",
