@@ -45,10 +45,12 @@ test_sysport:
 test_cyberstick:
 	$(CC) $(CFLAGS) -o $@ test_cyberstick.c "$(PX68K)/x11/joystick.c"
 
+# _GNU_SOURCE: scc.c's host serial backends use pty and usleep declarations
+# that glibc only exposes with it.
 test_scc_rs232c:
-	$(CC) $(CFLAGS) -o $@ test_scc_rs232c.c "$(PX68K)/x68k/scc.c" -lpthread
+	$(CC) $(CFLAGS) -D_GNU_SOURCE -o $@ test_scc_rs232c.c "$(PX68K)/x68k/scc.c" -lpthread
 
-# The 68000 core, built the way the iOS target builds it.
+# The 68000 core, built the way the app builds it.
 test_c68k_buserr:
 	$(CC) $(CFLAGS) -w -DC68K_NO_JUMP_TABLE -DHAVE_C68K -o $@ test_c68k_buserr.c \
 		"$(PX68K)/m68000/c68k/c68k.c" "$(PX68K)/m68000/c68k/c68kexec.c"
