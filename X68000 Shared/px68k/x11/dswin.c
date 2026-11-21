@@ -31,6 +31,7 @@
 #include    "adpcm.h"
 //#include    "mercury.h"
 #include    "fmg_wrap.h"
+#include    "dc_block.h"
 
 // Use a direct mixing path from the audio callback
 // instead of the legacy DSound ring buffer.
@@ -58,6 +59,9 @@ static volatile unsigned int s_dsound_refill_count = 0;
 // Frames of mixed audio written to the ring buffer since start (the timeline that
 // MIDI byte timestamps refer to). Written by the emulation and by underrun refills.
 static volatile long long s_dsound_frames_written = 0;
+// Removes the DC offset of the OPM + ADPCM mix (see dc_block.h). Used
+// under s_sound_send_lock, or by the direct callback alone.
+static DCBlock s_dsound_dc_block;
 
 
 void audio_callback(void *buffer, int len);
@@ -80,6 +84,7 @@ int DSound_Init(unsigned long rate, unsigned long buflen)
     pbep = &pcmbuffer[PCMBUF_SIZE];
 
     ratebase = (DWORD)rate;
+    DCBlock_Init(&s_dsound_dc_block, rate);
 
     return TRUE;
 }
@@ -171,8 +176,7 @@ static void sound_send_locked(int length)
             int mixStart = writtenSamples;
             for (int i = 0; i < chunkSamples; i++) {
                 int v = (int)adpcmBuf[mixStart + i] + (int)opmBuf[mixStart + i];
-                if (v > 32767) v = 32767; else if (v < -32768) v = -32768;
-                out[i] = (short)v;
+                out[i] = DCBlock_Process(&s_dsound_dc_block, (mixStart + i) & 1, v);
             }
 
             int bytesWritten = chunkSamples * (int)sizeof(short);
@@ -310,9 +314,7 @@ void X68000_AudioCallBack(void* buffer, const unsigned int sample)
     unsigned int totalSamples = frames * 2; // stereo samples
     for (unsigned int i = 0; i < totalSamples; i++) {
         int v = (int)adpcmBuf[i] + (int)opmBuf[i];
-        if (v > 32767) v = 32767;
-        else if (v < -32768) v = -32768;
-        out[i] = (short)v;
+        out[i] = DCBlock_Process(&s_dsound_dc_block, (int)(i & 1), v);
     }
 
     // If sample > frames (rare), zero the tail to avoid garbage
