@@ -636,6 +636,49 @@ final class GameViewController: UIViewController {
         ])
     }
 
+    // MARK: - Main memory
+
+    /// Main memory size Human68k uses: the setting in SRAM ($ED0008), shared with
+    /// SWITCH.X. The disk menu is rebuilt each time it opens, so a change made with
+    /// SWITCH.X shows here; a new size takes effect at the next reset.
+    private func mainMemoryMenu() -> UIMenu? {
+        guard let fileSystem = gameScene?.fileSystem else { return nil }
+        let current = fileSystem.mainMemorySize
+        let installed = fileSystem.installedMemorySize
+        let actions = fileSystem.mainMemoryMenuSizes.map { size -> UIAction in
+            let label = FileSystem.memorySizeLabel(size)
+            let note: String?
+            if size > installed {
+                note = "搭載している \(FileSystem.memorySizeLabel(installed)) より多い設定です"
+            } else if size == installed {
+                note = "搭載メモリすべて"
+            } else {
+                note = nil
+            }
+            return UIAction(title: label, subtitle: note,
+                            state: size == current ? .on : .off) { [weak self] _ in
+                guard size != fileSystem.mainMemorySize else { return }
+                fileSystem.setMainMemorySize(size)
+                self?.offerResetForMemorySize(label)
+            }
+        }
+        return UIMenu(title: "メインメモリ：\(FileSystem.memorySizeLabel(current))",
+                      subtitle: "SWITCH.X の設定と同じ（リセット後に反映）",
+                      image: UIImage(systemName: "memorychip"),
+                      children: [UIMenu(options: .displayInline, children: actions)])
+    }
+
+    private func offerResetForMemorySize(_ label: String) {
+        let alert = UIAlertController(title: "メインメモリを \(label) にしました",
+                                      message: "リセットすると Human68k が \(label) を使います。SRAM.DAT に保存したので、SWITCH.X でも同じ値が表示されます。",
+                                      preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "あとで", style: .cancel))
+        alert.addAction(UIAlertAction(title: "今すぐリセット", style: .destructive) { [weak self] _ in
+            self?.gameScene?.resetSystem()
+        })
+        present(alert, animated: true)
+    }
+
     /// Joystick port 1: an ordinary 2-button joystick, or a CYBER STICK in analog mode.
     private func joystickMenu() -> UIMenu {
         let standard = UIAction(title: "標準ジョイスティック", subtitle: "2 ボタン",
@@ -832,6 +875,7 @@ final class GameViewController: UIViewController {
         elements.append(hardDiskMenu())
         if let midi = midiMenu() { elements.append(midi) }
         if let speed = speedMenu() { elements.append(speed) }
+        if let memory = mainMemoryMenu() { elements.append(memory) }
         elements.append(joystickMenu())
         elements.append(rs232cMenu())
         let reset = UIAction(title: "リセット", image: UIImage(systemName: "arrow.counterclockwise")) { [weak self] _ in
