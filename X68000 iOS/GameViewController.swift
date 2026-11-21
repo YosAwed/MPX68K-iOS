@@ -658,8 +658,8 @@ final class GameViewController: UIViewController {
             return UIAction(title: label, subtitle: note,
                             state: size == current ? .on : .off) { [weak self] _ in
                 guard size != fileSystem.mainMemorySize else { return }
-                fileSystem.setMainMemorySize(size)
-                self?.offerResetForMemorySize(label)
+                let saved = fileSystem.setMainMemorySize(size)
+                self?.offerResetForMemorySize(label, saved: saved)
             }
         }
         return UIMenu(title: "メインメモリ：\(FileSystem.memorySizeLabel(current))",
@@ -668,9 +668,12 @@ final class GameViewController: UIViewController {
                       children: [UIMenu(options: .displayInline, children: actions)])
     }
 
-    private func offerResetForMemorySize(_ label: String) {
+    private func offerResetForMemorySize(_ label: String, saved: Bool) {
+        let message = saved
+            ? "リセットすると Human68k が \(label) を使います。SRAM.DAT に保存したので、SWITCH.X でも同じ値が表示されます。"
+            : "リセットすると Human68k が \(label) を使いますが、SRAM.DAT に保存できませんでした。アプリを終了すると元のサイズに戻ります。"
         let alert = UIAlertController(title: "メインメモリを \(label) にしました",
-                                      message: "リセットすると Human68k が \(label) を使います。SRAM.DAT に保存したので、SWITCH.X でも同じ値が表示されます。",
+                                      message: message,
                                       preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "あとで", style: .cancel))
         alert.addAction(UIAlertAction(title: "今すぐリセット", style: .destructive) { [weak self] _ in
