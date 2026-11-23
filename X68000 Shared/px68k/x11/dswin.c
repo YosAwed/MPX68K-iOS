@@ -350,7 +350,7 @@ cb_start:
 
       // needs more data - generate extra to prevent underruns
 	   if (datalen < len) {
-		   int extra_samples = ((len - datalen) / 4) + 512; // Generate extra samples
+		   int extra_samples = ((len - datalen) / 4) + 128; // Generate extra samples (small slack: ring backlog is output latency)
 		   s_dsound_refill_count++;
 		   DSound_Send(extra_samples);
 //		   printf("MORE!");
@@ -397,7 +397,7 @@ cb_start:
 
          int available = (int)(pbwp - pbsp);
          if (available < lenb) {
-            int needed_samples = ((lenb - available) / 4) + 256; // Generate extra samples  
+            int needed_samples = ((lenb - available) / 4) + 128; // Generate extra samples (small slack: ring backlog is output latency)
             s_dsound_refill_count++;
             DSound_Send(needed_samples);
          }

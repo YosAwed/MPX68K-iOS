@@ -144,7 +144,7 @@ class AudioStream {
     var dataFormat:     AudioStreamBasicDescription
     var queue:          AudioQueueRef? = nil
 
-    var buffers =       [AudioQueueBufferRef?](repeating: nil, count: 4)  // Increased buffer count for stability
+    var buffers =       [AudioQueueBufferRef?](repeating: nil, count: 3)  // 3 buffers x ~25ms: low latency, refill callback covers underruns
 
     var bufferByteSize: UInt32
     private var framesPerBuffer: UInt32 = 0
@@ -170,8 +170,10 @@ class AudioStream {
             mReserved:          0
         )
 
-        // Calculate buffer size based on sample rate to provide ~100ms of audio buffer for stability
-        let bufferDurationSeconds: Float64 = 0.1  // 100ms for better stability and reduced stuttering
+        // Calculate buffer size based on sample rate. ~25ms per buffer keeps
+        // action-game sound latency low; the output callback synchronously
+        // generates any shortfall, so small buffers do not underrun into silence.
+        let bufferDurationSeconds: Float64 = 0.025
         let framesPerBuffer = UInt32(Float64(samplingrate) * bufferDurationSeconds)
         self.framesPerBuffer = framesPerBuffer
         bufferByteSize = framesPerBuffer * dataFormat.mBytesPerFrame
@@ -264,13 +266,17 @@ class AudioStream {
         }
     }
 
+    private var isQueueRunning = false
+
     func play()
     {
         debugLog("Audio Play", category: .audio)
-        if let queue = self.queue {
+        if let queue = self.queue, !isQueueRunning {
             let result = AudioQueueStart(queue, nil)
             if result != noErr {
                 errorLog("Failed to start audio queue: \(result)", category: .audio)
+            } else {
+                isQueueRunning = true
             }
         }
     }
@@ -282,10 +288,12 @@ class AudioStream {
             let result = AudioQueueStop(queue, true)  // immediate stop
             if result != noErr {
                 errorLog("Failed to stop audio queue: \(result)", category: .audio)
+            } else {
+                isQueueRunning = false
             }
         }
     }
-    
+
     func pause()
     {
         debugLog("Audio Pause", category: .audio)
@@ -293,6 +301,8 @@ class AudioStream {
             let result = AudioQueuePause(queue)
             if result != noErr {
                 errorLog("Failed to pause audio queue: \(result)", category: .audio)
+            } else {
+                isQueueRunning = false
             }
         }
     }
@@ -303,6 +313,7 @@ class AudioStream {
         if let queue = self.queue {
             // Stop audio queue first
             AudioQueueStop(queue, true)
+            isQueueRunning = false
             
             // Flush any remaining buffers
             AudioQueueFlush(queue)
