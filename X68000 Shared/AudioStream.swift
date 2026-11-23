@@ -110,6 +110,15 @@ func bridge<T : AnyObject>(_ ptr : UnsafeRawPointer) -> T {
     // return unsafeBitCast(ptr, T.self) // ***
 }
 
+
+/// Keeps AudioStream.isQueueRunning in sync with the queue's real running
+/// state (the system stops the queue during audio interruptions).
+func audioQueueRunningListener(_ userData: UnsafeMutableRawPointer?, _ queue: AudioQueueRef, _ propertyID: AudioQueuePropertyID) {
+    guard propertyID == kAudioQueueProperty_IsRunning, let userData = userData else { return }
+    let stream: AudioStream = bridge(userData)
+    stream.syncQueueRunningState(queue)
+}
+
 func outputCallback(_ data: UnsafeMutableRawPointer?, queue: AudioQueueRef, buffer: AudioQueueBufferRef) {
     
     let audioData = buffer.pointee.mAudioData
@@ -144,7 +153,13 @@ class AudioStream {
     var dataFormat:     AudioStreamBasicDescription
     var queue:          AudioQueueRef? = nil
 
-    var buffers =       [AudioQueueBufferRef?](repeating: nil, count: 3)  // 3 buffers x ~25ms: low latency, refill callback covers underruns
+    // iOS: 3 buffers x ~25ms for low latency (the refill callback covers
+    // underruns). macOS keeps the original 4 x ~100ms: this file is shared.
+    #if os(iOS)
+    var buffers =       [AudioQueueBufferRef?](repeating: nil, count: 3)
+    #else
+    var buffers =       [AudioQueueBufferRef?](repeating: nil, count: 4)
+    #endif
 
     var bufferByteSize: UInt32
     private var framesPerBuffer: UInt32 = 0
@@ -170,10 +185,15 @@ class AudioStream {
             mReserved:          0
         )
 
-        // Calculate buffer size based on sample rate. ~25ms per buffer keeps
-        // action-game sound latency low; the output callback synchronously
+        // Calculate buffer size based on sample rate. On iOS ~25ms per buffer
+        // keeps action-game sound latency low; the output callback synchronously
         // generates any shortfall, so small buffers do not underrun into silence.
+        // macOS keeps the original ~100ms.
+        #if os(iOS)
         let bufferDurationSeconds: Float64 = 0.025
+        #else
+        let bufferDurationSeconds: Float64 = 0.1
+        #endif
         let framesPerBuffer = UInt32(Float64(samplingrate) * bufferDurationSeconds)
         self.framesPerBuffer = framesPerBuffer
         bufferByteSize = framesPerBuffer * dataFormat.mBytesPerFrame
@@ -194,6 +214,10 @@ class AudioStream {
             // Disable level metering for better performance
             var enableLevelMetering: UInt32 = 0
             AudioQueueSetProperty(queue, kAudioQueueProperty_EnableLevelMetering, &enableLevelMetering, UInt32(MemoryLayout<UInt32>.size))
+            // Keep isQueueRunning truthful: the system can stop the queue on
+            // its own (calls, Siri and other audio interruptions), and play()
+            // must then really restart it instead of trusting a stale flag.
+            AudioQueueAddPropertyListener(queue, kAudioQueueProperty_IsRunning, audioQueueRunningListener, unsafeBitCast(self, to: UnsafeMutableRawPointer.self))
         }
         
         load()
@@ -266,6 +290,16 @@ class AudioStream {
         }
     }
 
+    /// Called from the kAudioQueueProperty_IsRunning listener so the flag
+    /// always matches the queue's real state.
+    func syncQueueRunningState(_ queue: AudioQueueRef) {
+        var isRunning: UInt32 = 0
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        if AudioQueueGetProperty(queue, kAudioQueueProperty_IsRunning, &isRunning, &size) == noErr {
+            isQueueRunning = (isRunning != 0)
+        }
+    }
+
     private var isQueueRunning = false
 
     func play()
@@ -311,6 +345,7 @@ class AudioStream {
         debugLog("Audio Close", category: .audio)
 
         if let queue = self.queue {
+            AudioQueueRemovePropertyListener(queue, kAudioQueueProperty_IsRunning, audioQueueRunningListener, unsafeBitCast(self, to: UnsafeMutableRawPointer.self))
             // Stop audio queue first
             AudioQueueStop(queue, true)
             isQueueRunning = false
