@@ -126,6 +126,16 @@
 				<string>120</string>
 			</array>
 		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>バックグラウンドでも再生を継続</string>
+			<key>Key</key>
+			<string>background_continuation</string>
+			<key>DefaultValue</key>
+			<false/>
+		</dict>
 	</array>
 </dict>
 </plist>

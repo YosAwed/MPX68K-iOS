@@ -1314,10 +1314,31 @@ class GameScene: SKScene {
         settings()
     }
     
+    #if os(iOS)
+    /// Settings toggle: keep emulation and audio running in the background.
+    /// Defaults to off (upstream preference: battery use and App Store
+    /// review risk). When off, resign-active pauses as before.
+    static var backgroundContinuationEnabled: Bool {
+        UserDefaults.standard.object(forKey: "background_continuation") as? Bool ?? false
+    }
+    #endif
+
     func applicationWillResignActive() {
+        #if os(iOS)
+        // バックグラウンドでもエミュレーションと音声を継続する
+        // （.playback セッション + UIBackgroundModes/audio、設定でオフにできる）。
+        // SpriteKit の update が止まってもフォールバックタイマが
+        // フレーム実行を引き継ぐので、ここで音声を止めない。
+        // 着信などの割り込みは AVAudioSession の interruption 通知側で扱う。
+        if !Self.backgroundContinuationEnabled {
+            midiController.setInternalSynthPaused(true)
+            audioStream?.pause()
+        }
+        #else
         midiController.setInternalSynthPaused(true)
         // Pause audio to prevent underruns when app is inactive
         audioStream?.pause()
+        #endif
     }
     
     func applicationDidBecomeActive() {
