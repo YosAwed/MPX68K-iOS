@@ -36,8 +36,12 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         Self.audioSessionQueue.async {
             let session = AVAudioSession.sharedInstance()
             do {
-                // 他のアプリの音と混在させる
-                try session.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+                // .playback + UIBackgroundModes/audio: バックグラウンドでも
+                // エミュレーションと音声を継続する（.ambient では不可）。
+                // 他のアプリの音とは従来どおり混在させる。
+                try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+                // ハードウェア側のバッファを小さくして音声遅延を抑える
+                try session.setPreferredIOBufferDuration(0.005)
                 try session.setActive(true)
             } catch {
                 errorLog("Audio session setup failed: \(error)", category: .audio)

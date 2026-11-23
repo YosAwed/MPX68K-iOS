@@ -1315,9 +1315,11 @@ class GameScene: SKScene {
     }
     
     func applicationWillResignActive() {
-        midiController.setInternalSynthPaused(true)
-        // Pause audio to prevent underruns when app is inactive
-        audioStream?.pause()
+        // バックグラウンドでもエミュレーションと音声を継続する
+        // （.playback セッション + UIBackgroundModes/audio）。
+        // SpriteKit の update が止まってもフォールバックタイマが
+        // フレーム実行を引き継ぐので、ここで音声を止めない。
+        // 着信などの割り込みは AVAudioSession の interruption 通知側で扱う。
     }
     
     func applicationDidBecomeActive() {
