@@ -1317,7 +1317,7 @@ class GameScene: SKScene {
     #if os(iOS)
     /// Settings toggle: keep emulation and audio running in the background.
     /// Defaults to off (upstream preference: battery use and App Store
-    /// review risk); turning it on restores pausing on resign-active when off.
+    /// review risk). When off, resign-active pauses as before.
     static var backgroundContinuationEnabled: Bool {
         UserDefaults.standard.object(forKey: "background_continuation") as? Bool ?? false
     }
