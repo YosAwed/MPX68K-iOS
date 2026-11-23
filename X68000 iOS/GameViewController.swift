@@ -1412,10 +1412,17 @@ final class GameViewController: UIViewController {
     // MARK: - Scene lifecycle
 
     func sceneWillResignActive() {
+        // Re-enable the idle timer so the device can sleep normally
+        // whenever this app is not the active foreground app.
+        UIApplication.shared.isIdleTimerDisabled = false
         gameScene?.applicationWillResignActive()
     }
 
     func sceneDidBecomeActive() {
+        // Keep the screen awake while the emulator is in use: the system
+        // auto-lock must not blank the display mid-game. (The power button
+        // still sleeps the device; this only disables the idle timer.)
+        UIApplication.shared.isIdleTimerDisabled = true
         gameScene?.applicationDidBecomeActive()
     }
 
