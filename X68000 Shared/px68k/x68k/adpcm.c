@@ -354,14 +354,14 @@ void FASTCALL ADPCM_Write(DWORD adr, BYTE data)
 			ADPCM_DifBuf = 0;
 			ADPCM_RdPtr = ADPCM_WrPtr;
 		} else if ( data&2 ) {
-			// PLAY ST returns the MSM6258's output to the centre and its
-			// step size to the minimum, also while it is already playing.
-			// PCM8A writes PLAY ST without SP when it resumes after a gap
-			// and resets its own encoder at the same time; keeping the old
-			// decoder state here left the two out of step (a DC offset).
-			ADPCM_Step = 0;
-			ADPCM_Out = 0;
+			// Decoder state is reset only when starting from a stopped
+			// state (matching the macOS core). Resetting it on every PLAY ST
+			// write, including mid-playback retriggers by PCM8A, made the
+			// decoder jump to the centre value while PCM8A's encoder kept
+			// its state, which was audible as clicks at sample starts.
 			if ( !ADPCM_Playing ) {
+				ADPCM_Step = 0;
+				ADPCM_Out = 0;
 				// Fix: Initialize with silence instead of -2 to prevent startup noise
 				OldL = OldR = 0;
 				ADPCM_Playing = 1;
