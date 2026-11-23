@@ -346,6 +346,19 @@ BYTE FASTCALL SASI_Read(DWORD adr)
 
 	if (adr==0xe96003)
 	{
+		if (s_scsi_boot_intercept_armed) {
+			/* SCSI-boot handoff. The emulator's synthetic-ROM boot relies on
+			 * intercepting the $E96007 SASI device select, but the XVI IPL
+			 * detects devices by reading this status port and never issues
+			 * that select -- it falls back to FDD. Trigger the boot injection
+			 * here instead, at the first status probe: the IPL has finished
+			 * its RAM test and set up vectors, and SCSI_InjectBoot() loads
+			 * the HDD boot sector to $2000 and arms a self-contained deferred
+			 * jump, so control transfers to the SCSI boot code. One-shot.
+			 * (Ported from the macOS fork.) */
+			s_scsi_boot_intercept_armed = 0;
+			SCSI_InjectBoot();
+		}
 		/* Phase=0 idle: all status bits clear (bus idle). */
 		if (SASI_Phase)
 			ret |= 2;		// Busy
@@ -361,6 +374,16 @@ BYTE FASTCALL SASI_Read(DWORD adr)
 			ret |= 0x0c;		// I/O & C/D
 		if (SASI_Phase==5)
 			ret |= 0x10;		// MSG
+		/* SCSI-boot handoff: when a SCSI HDD is the boot medium the SASI
+		 * boot intercept is armed, but the XVI IPL probes this status port
+		 * (BTST #6) to decide HDD-vs-FDD boot and, seeing the idle SASI bus
+		 * with bit 6 clear, falls back to the (empty) FDD before it ever
+		 * issues the $E96007 device select that SASI_Write() intercepts.
+		 * Assert bit 6 while idle so the IPL takes the HDD path and reaches
+		 * the select, letting SCSI_InjectBoot() fire.
+		 * (Ported from the macOS fork.) */
+		if ((SASI_Phase==0) && s_scsi_boot_intercept_armed)
+			ret |= 0x40;		// device present (drives IPL to HDD boot)
 	}
 	else if (adr ==0xe96001)
 	{
