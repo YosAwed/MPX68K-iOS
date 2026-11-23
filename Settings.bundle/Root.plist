@@ -134,7 +134,7 @@
 			<key>Key</key>
 			<string>background_continuation</string>
 			<key>DefaultValue</key>
-			<true/>
+			<false/>
 		</dict>
 	</array>
 </dict>
